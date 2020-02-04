@@ -18,9 +18,7 @@
 
 
 #define MAX_EPOLL_EVENTS 100
-
-
-#define PORT 8080
+//#define PORT 8080
 
 int server_fd; // deskryptor do servera
 int epoll_fd; // deskryptor do epoll
@@ -42,53 +40,36 @@ void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
 void struktura_Sockddr(int fileDescriptor);
 
 void nonBlock(int fileDescriptor);
-
+void nasluchiwanieServer(int fileDescriptor);
 
 int main (int argc, char** argv)
 {
-
     int sockfd;
-    int newsockfd;
+    int newsockfd = 0;
     int portno;
     socklen_t clilen;
     char buffer[256];
     int n;
-
     char* prefiksSciezki = NULL;
-
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
-
-
     struct epoll_event event;
-
     int port;
+
+    /////////////////////////////////////////////////////////
     czytanieParametrow(argc, argv, &port, &prefiksSciezki);
-
-    if ( port < 6000 || port > 65535)
-    {
-        printf("Podany PORT jest nieprawidlowy!\n");
-        exit(-1);
-    }
-
-
     tworzenie_serwer(port);
+    nasluchiwanieServer(server_fd);
 
-
-    if ( listen(server_fd, 5) < 0)
-    {
-        printf("Blad listen main \n");
-        exit(-1);
-    }
 
     int addrlen = sizeof(address);
 
-    if (( newsockfd = accept(server_fd, (struct sockaddr *)&address,
-        (socklen_t*)&addrlen)) < 0)
-        {
-            printf("Blad accept\n");
-            exit(-1);
-        }
+    // if (( newsockfd = accept(server_fd, (struct sockaddr *)&address,
+    // (socklen_t*)&addrlen)) == -1)
+    //     {
+    //         printf("Blad accept\n");
+    //         exit(-1);
+    //     }
 
     struct epoll_event *events;
     events = (struct epoll_event*)calloc(MAX_EPOLL_EVENTS,
@@ -169,13 +150,18 @@ void struktura_Sockddr(int fileDescriptor)
 }
 
 
-void dodanie_do_epoll(int fileDesc, int typDoEpoll)
+void dodanie_do_epoll(int fileDescriptor, int typDoEpoll)
 {
+    struct epoll_event structEvent;
 
-    evTemp.data.fd = fileDesc;
-    evTemp.events = typDoEpoll;
-    
-    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &evTemp);
+    structEvent.data.fd = fileDescriptor;
+    structEvent.events = typDoEpoll;
+
+   if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &evTemp) == -1 )
+   {
+       printf("Blad dodanie_do_epoll - serwer\n");
+       exit(-1);
+   }
 }
 
 void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
@@ -212,7 +198,15 @@ void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
         exit(-1);
     }
 
+
+
     *port = strtol(argv[optind], NULL, 10);
+
+    if ( *port < 6000 || *port > 65535)
+    {
+        printf("Podany PORT jest nieprawidlowy!\n");
+        exit(-1);
+    }
 }
 
 
@@ -226,10 +220,19 @@ void nonBlock(int fileDescriptor)
         exit(-1);
     }
 
-    if (fcntl(fileDescriptor, flagi | O_NONBLOCK) == -1)
-    {
-        printf("Blad nonBlock, doklejanie flagi - serwer\n");
-        exit(-1);
-    } 
+    if ( fcntl(fileDescriptor, F_SETFL, flagi | O_NONBLOCK) == -1)
+   {
+       printf("Blad nonBlock, doklejanie flagi - serwer\n");
+       exit(-1);
+   } 
 
+}
+
+void nasluchiwanieServer(int fileDescriptor)
+{
+    if ( listen(server_fd, 5) < 0)
+    {
+        printf("Blad listen main \n");
+        exit(-1);
+    }
 }
