@@ -23,9 +23,18 @@
 #define PORT 8081
 
 int server_fd; // deskryptor do servera
-struct sockaddr_in address;
+int epoll_fd; // deskryptor do epoll
 
-void tworzenie_serwera(int port);
+   int newsockfd; // deskryptor socketa od klienta
+
+struct sockaddr_in address;
+struct  epoll_event ev; // struktura do epolla
+
+void tworzenie_serwer(int port);
+
+void tworzenie_epoll();
+void dodanie_do_epoll(int fileDesc, int typDoEpoll);
+
 void struktura_Sockddr(int fileDescriptor);
 
 
@@ -46,7 +55,7 @@ int main (int argc, char** argv)
 
     struct epoll_event event;
 
-    tworzenie_serwera(5);
+    tworzenie_serwer(5);
 
 
     if ( listen(server_fd, 5) < 0)
@@ -107,4 +116,15 @@ void struktura_Sockddr(int fileDescriptor)
         // else
             // poslac do autora
             // z flaga w sun_family -1
+}
+
+
+void dodanie_do_epoll(int fileDesc, int typDoEpoll)
+{
+    struct epoll_event evTemp;
+    
+    evTemp.data.fd = fileDesc;
+    evTemp.events = typDoEpoll;
+    
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &evTemp);
 }
