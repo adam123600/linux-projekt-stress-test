@@ -44,8 +44,6 @@ void struktura_Sockddr(int fileDescriptor);
 
 int main (int argc, char** argv)
 {
-    // FUNKCJE Z KTORYCH TTRZEBA SKORZYSTAC:
-    // getopt
 
     int sockfd;
     int newsockfd;
@@ -65,7 +63,14 @@ int main (int argc, char** argv)
     int port;
     czytanieParametrow(argc, argv, &port, &prefiksSciezki);
 
-    tworzenie_serwer(5);
+    if ( port < 6000 || port > 65535)
+    {
+        printf("Podany PORT jest nieprawidlowy!\n");
+        exit(-1);
+    }
+
+
+    tworzenie_serwer(port);
 
 
     if ( listen(server_fd, 5) < 0)
@@ -92,9 +97,6 @@ int main (int argc, char** argv)
         exit(-1);
     }
 
-    // sleep(5);
-    // write(newsockfd, "ASD", strlen("ASD"));
-    // sleep(5);
 
     while(1)
     {
@@ -136,7 +138,7 @@ void tworzenie_serwer(int port)
 
     address.sin_family = AF_INET; 
     address.sin_addr.s_addr = INADDR_ANY; 
-    address.sin_port = htons( PORT ); 
+    address.sin_port = htons( port ); 
 
     if ( bind(server_fd, (struct sockaddr *)&address, sizeof(address) ) < 0 )
     {
@@ -179,8 +181,6 @@ void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
         {
             case 'O':
                 *prefiksSciezki = optarg;
-                //prefiksSciezki = (char*)calloc(strlen(optarg)+1, sizeof(char));
-                //prefiksSciezki = strcpy(prefiksSciezki, optarg);
                 prefiksSciezkiFlag = 1;
                 break;
         }
@@ -199,5 +199,4 @@ void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
     }
 
     *port = strtol(argv[optind], NULL, 10);
-
 }
