@@ -37,7 +37,7 @@ void tworzenie_serwer(int port);
 void tworzenie_epoll();
 void dodanie_do_epoll(int fileDesc, int typDoEpoll);
 
-void czytanieParametrow(int argc, char** argv, int* port, char* prefiksSciezki);
+void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki);
 
 void struktura_Sockddr(int fileDescriptor);
 
@@ -61,6 +61,9 @@ int main (int argc, char** argv)
 
 
     struct epoll_event event;
+
+    int port;
+    czytanieParametrow(argc, argv, &port, &prefiksSciezki);
 
     tworzenie_serwer(5);
 
@@ -165,7 +168,7 @@ void dodanie_do_epoll(int fileDesc, int typDoEpoll)
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &evTemp);
 }
 
-void czytanieParametrow(int argc, char** argv, int* port, char* prefiksSciezki)
+void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
 {
     int opt;
     int prefiksSciezkiFlag = 0;
@@ -175,12 +178,11 @@ void czytanieParametrow(int argc, char** argv, int* port, char* prefiksSciezki)
         switch(opt)
         {
             case 'O':
-                prefiksSciezki = optarg;
+                *prefiksSciezki = optarg;
+                //prefiksSciezki = (char*)calloc(strlen(optarg)+1, sizeof(char));
+                //prefiksSciezki = strcpy(prefiksSciezki, optarg);
                 prefiksSciezkiFlag = 1;
-
-            default:
-                printf("Nie poprawne argumenty! czytanieParametrow\n");
-                exit(-1);            
+                break;
         }
     }
 
