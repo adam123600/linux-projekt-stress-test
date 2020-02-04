@@ -17,23 +17,27 @@
 #include <sys/un.h>
 
 
+#define MAX_EPOLL_EVENTS 100
 
 
-
-#define PORT 8081
+#define PORT 8080
 
 int server_fd; // deskryptor do servera
 int epoll_fd; // deskryptor do epoll
 
-   int newsockfd; // deskryptor socketa od klienta
+int newsockfd; // deskryptor socketa od klienta
 
 struct sockaddr_in address;
 struct  epoll_event ev; // struktura do epolla
+
+struct epoll_event evTemp; // struktura do funkcji: dodanie_do_epoll
 
 void tworzenie_serwer(int port);
 
 void tworzenie_epoll();
 void dodanie_do_epoll(int fileDesc, int typDoEpoll);
+
+void czytanieParametrow(int argc, char** argv, int* port, char* prefiksSciezki);
 
 void struktura_Sockddr(int fileDescriptor);
 
@@ -50,8 +54,11 @@ int main (int argc, char** argv)
     char buffer[256];
     int n;
 
+    char* prefiksSciezki = NULL;
+
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
+
 
     struct epoll_event event;
 
@@ -73,10 +80,39 @@ int main (int argc, char** argv)
             exit(-1);
         }
 
+    struct epoll_event *events;
+    events = (struct epoll_event*)calloc(MAX_EPOLL_EVENTS,
+                                 sizeof(struct epoll_event));
+    if ( !events )
+    {
+        printf("Blad calloc main\n");
+        exit(-1);
+    }
 
-    sleep(5);
-    write(newsockfd, "ASD", strlen("ASD"));
-    sleep(5);
+    // sleep(5);
+    // write(newsockfd, "ASD", strlen("ASD"));
+    // sleep(5);
+
+    while(1)
+    {
+        int nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
+
+        // if (nfds  == -1)
+        // {
+        //     printf("Blad nfds main\n");
+        //     exit(-1);
+        // }
+
+        for (int i = 0; i < nfds; i++)
+        {
+            write(1, "ASD", strlen("ASD"));
+        }
+        printf("A\n");
+        sleep(1);
+
+    }
+
+
 
     close(newsockfd);
     close(sockfd);
@@ -84,6 +120,7 @@ int main (int argc, char** argv)
     return 0;
 
 }
+
 
 void tworzenie_serwer(int port)
 {
@@ -121,10 +158,44 @@ void struktura_Sockddr(int fileDescriptor)
 
 void dodanie_do_epoll(int fileDesc, int typDoEpoll)
 {
-    struct epoll_event evTemp;
 
     evTemp.data.fd = fileDesc;
     evTemp.events = typDoEpoll;
     
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &evTemp);
+}
+
+void czytanieParametrow(int argc, char** argv, int* port, char* prefiksSciezki)
+{
+    int opt;
+    int prefiksSciezkiFlag = 0;
+
+    while((opt = getopt(argc, argv, "O:")) != -1)
+    {
+        switch(opt)
+        {
+            case 'O':
+                prefiksSciezki = optarg;
+                prefiksSciezkiFlag = 1;
+
+            default:
+                printf("Nie poprawne argumenty! czytanieParametrow\n");
+                exit(-1);            
+        }
+    }
+
+    if ( !prefiksSciezkiFlag )
+    {
+        printf("Brak podanego argumentu: prefiksSciezki\n");
+        exit(-1);
+    }
+
+    if ( (optind+1) != argc )
+    {
+        printf("Za duzo/malo parametrow- czytanieParametrow\n");
+        exit(-1);
+    }
+
+    *port = strtol(argv[optind], NULL, 10);
+
 }
