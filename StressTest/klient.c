@@ -22,11 +22,21 @@
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
                          int* pPort, float* dOdstepCzasowy, float* tCalkowityCzasPracy);
 
-int main()
+int main(int argc, char** argv)
 {
+    int port;
+    int iloscPolaczen;
+    float odstepCzasowy;
+    float calkowityCzasPracy;
 
+    czytanieParametrow(argc, argv, &iloscPolaczen, &port,
+         &odstepCzasowy, &calkowityCzasPracy);
 
-  
+  printf("port: %d\tiloscPolaczen: %d\n", port, iloscPolaczen);
+  printf("odstepCzasowy: %f\tcalkowityCzasPracy: %f\n", 
+                    odstepCzasowy, calkowityCzasPracy);
+
+  exit(1);
 }
 
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
@@ -38,6 +48,11 @@ void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
     int dFlag = 0;
     int TFlag = 0;
 
+    if ( argc != 9)
+    {
+        printf("Liczba argumentow sie nie zgadza - klient\n");
+        exit(-1);
+    }
 
     while((opt = getopt(argc, argv, "S:p:d:T:")) != -1)
     {

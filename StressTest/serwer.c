@@ -175,6 +175,12 @@ void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
     int opt;
     int prefiksSciezkiFlag = 0;
 
+    if ( argc != 4)
+    {
+        printf("Liczba argumentow sie nie zgadza- serwer\n");
+        exit(-1);
+    }
+
     while((opt = getopt(argc, argv, "O:")) != -1)
     {
         switch(opt)
