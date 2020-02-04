@@ -15,9 +15,10 @@
 #include <arpa/inet.h> 
 #include <sys/epoll.h>
 #include <sys/un.h>
+#include <sys/socket.h>
 
 #define MAX 80
-#define PORT 8080
+//#define PORT 8080
 
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
                          int* pPort, float* dOdstepCzasowy, float* tCalkowityCzasPracy);
@@ -32,9 +33,30 @@ int main(int argc, char** argv)
     czytanieParametrow(argc, argv, &iloscPolaczen, &port,
          &odstepCzasowy, &calkowityCzasPracy);
 
-  printf("port: %d\tiloscPolaczen: %d\n", port, iloscPolaczen);
-  printf("odstepCzasowy: %f\tcalkowityCzasPracy: %f\n", 
-                    odstepCzasowy, calkowityCzasPracy);
+    // utworzenie socketu
+
+    int mySocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    struct sockaddr_in cli_addr; // struktura do socketa- klient
+
+    cli_addr.sin_port = htons(port);
+    cli_addr.sin_family = AF_INET;
+    //cli_addr.sin_addr.s_addr = INADDR_ANY;
+    cli_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memset(cli_addr.sin_zero, 0, 8);
+
+    if ( connect(mySocket, (struct sockaddr*)&cli_addr, sizeof(cli_addr)) != 0)
+    {
+        printf("Nie udalo sie polaczyc\n");
+        exit(-1);
+    }
+
+    else 
+    {
+        printf("Udalo sie polaczyc!\n");
+    }
+    
+    sleep(100);
 
   exit(1);
 }

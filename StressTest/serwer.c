@@ -108,11 +108,14 @@ int main (int argc, char** argv)
         //     exit(-1);
         // }
 
-        for (int i = 0; i < nfds; i++)
-        {
-            write(1, "ASD", strlen("ASD"));
-        }
-        printf("A\n");
+        //for (int i = 0; i < nfds; i++)
+       // {
+        //    write(1, "ASD", strlen("ASD"));
+        //}
+
+
+        //printf("A\n");
+        printf("Socket: %d\n", newsockfd);
         sleep(1);
 
     }
@@ -139,6 +142,7 @@ void tworzenie_serwer(int port)
     address.sin_family = AF_INET; 
     address.sin_addr.s_addr = INADDR_ANY; 
     address.sin_port = htons( port ); 
+    // dopisac memset address.sin_zero ( jest w kliencie )
 
     if ( bind(server_fd, (struct sockaddr *)&address, sizeof(address) ) < 0 )
     {
