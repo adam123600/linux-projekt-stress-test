@@ -41,6 +41,8 @@ void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
 
 void struktura_Sockddr(int fileDescriptor);
 
+void nonBlock(int fileDescriptor);
+
 
 int main (int argc, char** argv)
 {
@@ -149,6 +151,8 @@ void tworzenie_serwer(int port)
         printf("Blad bind - tworzenie serwera\n");
         exit(-3);
     }
+
+    nonBlock(server_fd);
 }
 
 void struktura_Sockddr(int fileDescriptor)
@@ -209,4 +213,23 @@ void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
     }
 
     *port = strtol(argv[optind], NULL, 10);
+}
+
+
+void nonBlock(int fileDescriptor)
+{
+    int flagi;
+
+    if ( ( flagi = fcntl(fileDescriptor, F_GETFL, 0)) == -1)
+    {
+        printf("Blad nonBlock, odczytywaie flag - serwer\n");
+        exit(-1);
+    }
+
+    if (fcntl(fileDescriptor, flagi | O_NONBLOCK) == -1)
+    {
+        printf("Blad nonBlock, doklejanie flagi - serwer\n");
+        exit(-1);
+    } 
+
 }
