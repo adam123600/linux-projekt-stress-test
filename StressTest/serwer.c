@@ -85,7 +85,7 @@ int main (int argc, char** argv)
 
 }
 
-void tworzenie_serwera(int port)
+void tworzenie_serwer(int port)
 {
    
     if ( (server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0 )
@@ -122,7 +122,7 @@ void struktura_Sockddr(int fileDescriptor)
 void dodanie_do_epoll(int fileDesc, int typDoEpoll)
 {
     struct epoll_event evTemp;
-    
+
     evTemp.data.fd = fileDesc;
     evTemp.events = typDoEpoll;
     
