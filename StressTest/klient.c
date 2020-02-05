@@ -16,6 +16,7 @@
 #include <sys/epoll.h>
 #include <sys/un.h>
 #include <sys/socket.h>
+#include <sys/random.h>
 
 //#define MAX 80
 int server_fd;
@@ -40,15 +41,18 @@ int main(int argc, char** argv)
     float odstepCzasowy;
     float calkowityCzasPracy;
 
-    struct sockaddr_un* mySockaddr;
+//  struct sockaddr_un* mySockaddr;
    //mySockaddr.sun_family = AF_LOCAL;
    //mySockaddr.sun_path =  // tutaj random "\0, 107 bajtow";
+
+    struct sockaddr_un mySockaddrUN;
+    losoweDane(&mySockaddrUN);
+
 
     czytanieParametrow(argc, argv, &iloscPolaczen, &port,
          &odstepCzasowy, &calkowityCzasPracy);
 
- //   tworzenie_serwer(port);
-
+    write(1, mySockaddrUN.sun_path, 108);
     
 
     // utworzenie socketu
@@ -57,9 +61,9 @@ int main(int argc, char** argv)
 
     struct sockaddr_in cli_addr; // struktura do socketa- klient
 
-    // cli_addr.sin_port = htons(port);
-    // cli_addr.sin_family = AF_INET;
-    // cli_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    cli_addr.sin_port = htons(port);
+    cli_addr.sin_family = AF_INET;
+    cli_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
 
     memset(cli_addr.sin_zero, 0, 8);
@@ -69,6 +73,7 @@ int main(int argc, char** argv)
         printf("Nie udalo sie polaczyc\n");
         exit(-1);
     }
+
 
     else 
     {
@@ -179,19 +184,12 @@ void nonBlock(int fileDescriptor)
 
 void losoweDane(struct sockaddr_un* sockaddrStruct)
 {
-    int tempFd;
+    char* tempBuffer = (char*)calloc(107, sizeof(char));
+    sockaddrStruct->sun_family = AF_LOCAL;
 
-    if (( tempFd = open("dev/random", O_RDONLY)) == -1)
-    {
-        printf("Blad otwarcia random - losoweDane klient\n");
-        exit(-1);
-    }
+    getrandom(tempBuffer, 107, GRND_NONBLOCK);
+    sockaddrStruct->sun_path[0] = '\0';
+    strcpy(&sockaddrStruct->sun_path[1], tempBuffer);
 
-    char tempBuffer[107];
-
-    if (( read(tempFd, tempBuffer, 107)) == -1)
-    {
-        printf("Blad czytania tempFd, losoweDane klient\n");
-        exit(-1);
-    }
+    free(tempBuffer);
 }
