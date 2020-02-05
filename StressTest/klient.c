@@ -17,11 +17,21 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 
-#define MAX 80
-//#define PORT 8080
+//#define MAX 80
+int server_fd;
+
+struct sockaddr_in address;
+
+
+
 
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
-                         int* pPort, float* dOdstepCzasowy, float* tCalkowityCzasPracy);
+            int* pPort, float* dOdstepCzasowy, float* tCalkowityCzasPracy);
+
+void tworzenie_serwer(int port);
+void nonBlock(int fileDescriptor);
+
+void losoweDane(struct sockaddr_un* sockaddrStruct);
 
 int main(int argc, char** argv)
 {
@@ -30,8 +40,16 @@ int main(int argc, char** argv)
     float odstepCzasowy;
     float calkowityCzasPracy;
 
+    struct sockaddr_un* mySockaddr;
+   //mySockaddr.sun_family = AF_LOCAL;
+   //mySockaddr.sun_path =  // tutaj random "\0, 107 bajtow";
+
     czytanieParametrow(argc, argv, &iloscPolaczen, &port,
          &odstepCzasowy, &calkowityCzasPracy);
+
+ //   tworzenie_serwer(port);
+
+    
 
     // utworzenie socketu
 
@@ -39,10 +57,11 @@ int main(int argc, char** argv)
 
     struct sockaddr_in cli_addr; // struktura do socketa- klient
 
-    cli_addr.sin_port = htons(port);
-    cli_addr.sin_family = AF_INET;
-    //cli_addr.sin_addr.s_addr = INADDR_ANY;
-    cli_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    // cli_addr.sin_port = htons(port);
+    // cli_addr.sin_family = AF_INET;
+    // cli_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+
     memset(cli_addr.sin_zero, 0, 8);
 
     if ( connect(mySocket, (struct sockaddr*)&cli_addr, sizeof(cli_addr)) != 0)
@@ -110,6 +129,69 @@ void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
     {
         printf("Nie podano odpowiednich parametrow:\n");
         printf("-S lub -p lub -d lub -T\n");
+        exit(-1);
+    }
+}
+
+
+void tworzenie_serwer(int port)
+{
+   
+    if ( (server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0 )
+    {
+        printf("Blad - tworzenie serwera\n");
+        exit(-2);
+    }
+
+    address.sin_family = AF_INET; 
+    //address.sin_addr.s_addr = INADDR_ANY; 
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    address.sin_port = htons( port ); 
+    // dopisac memset address.sin_zero ( jest w kliencie )
+
+    if ( bind(server_fd, (struct sockaddr *)&address, sizeof(address) ) < 0 )
+    {
+        printf("Blad bind - tworzenie serwera\n");
+        exit(-3);
+    }
+
+    nonBlock(server_fd);
+}
+
+
+void nonBlock(int fileDescriptor)
+{
+    int flagi;
+
+    if ( ( flagi = fcntl(fileDescriptor, F_GETFL, 0)) == -1)
+    {
+        printf("Blad nonBlock, odczytywaie flag - serwer\n");
+        exit(-1);
+    }
+
+    if ( fcntl(fileDescriptor, F_SETFL, flagi | O_NONBLOCK) == -1)
+   {
+       printf("Blad nonBlock, doklejanie flagi - serwer\n");
+       exit(-1);
+   } 
+
+}
+
+void losoweDane(struct sockaddr_un* sockaddrStruct)
+{
+    int tempFd;
+
+    if (( tempFd = open("dev/random", O_RDONLY)) == -1)
+    {
+        printf("Blad otwarcia random - losoweDane klient\n");
+        exit(-1);
+    }
+
+    char tempBuffer[107];
+
+    if (( read(tempFd, tempBuffer, 107)) == -1)
+    {
+        printf("Blad czytania tempFd, losoweDane klient\n");
         exit(-1);
     }
 }

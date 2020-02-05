@@ -69,35 +69,12 @@ int main (int argc, char** argv)
     nasluchiwanieServer(server_fd);
 
 
-//    int addrlen = sizeof(address);
-
-    // if (( newsockfd = accept(server_fd, (struct sockaddr *)&address,
-    // (socklen_t*)&addrlen)) == -1)
-    //     {
-    //         printf("Blad accept\n");
-    //         exit(-1);
-    //     }
-
-    // struct epoll_event *events;
-    // events = (struct epoll_event*)calloc(MAX_EPOLL_EVENTS,
-    //                              sizeof(struct epoll_event));
-    // if ( !events )
-    // {
-    //     printf("Blad calloc main\n");
-    //     exit(-1);
-    // }
-    printf("Przed whilem!\n");
-
     while(1)
     {
-        //int nfds;
         int nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
-        printf("Przed epoll wait\n");
-        printf("po epoll wait");
 
         for(int i = 0; i < nfds; i++)
         {
-            printf("Petla for\n");
 
             if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
             {
@@ -107,46 +84,17 @@ int main (int argc, char** argv)
 
             else if( events[i].data.fd == server_fd)
             {
-                printf("polczylo sie - ackeptowaniePolaczenia\n");
                 akceptowaniePolaczenia(events[i].data.fd);
-                read(events[i].data.fd, buffer, 50);
-                printf("%s\n", buffer);
             }
 
             else 
             {
-                // czytanie struktury 
-                printf("czytanie struktury \n");
                 czytanieStruktury(events[i].data.fd);
             }
         }
 
-        
-        
-        //read()
-
         sleep(1);
-
-
-        // if (nfds  == -1)
-        // {
-        //     printf("Blad nfds main\n");
-        //     exit(-1);
-        // }
-
-        //for (int i = 0; i < nfds; i++)
-       // {
-        //    write(1, "ASD", strlen("ASD"));
-        //}
-
-
-        //printf("A\n");
-       // sleep(1);
-
     }
-
-
-    printf("Socket: %d\n", newsockfd);
 
     close(newsockfd);
     close(sockfd);
@@ -182,29 +130,11 @@ void tworzenie_serwer(int port)
 
 void czytanieStruktury(int fileDescriptor)
 {
-    //   struct sockaddr_un structUn;
-         printf("czytanie struktury \n");
-
-    //   if ( read(fileDescriptor, &structUn, sizeof(structUn)) != sizeof(structUn))
-    //   {
-    //       printf("Blad czytania struktury - czytanieStruktury \n");
-    //       exit(-1);
-    //   }
-
-    //  printf("czytanie struktury 2\n");
-    //  printf("%s %d\n", structUn.sun_path, structUn.sun_family);
-
     char tempbuffer[500];
 
     read(fileDescriptor, tempbuffer, 500);
 
     printf("%s\n", tempbuffer);
-
-
-
-
-
-
 
 
       // sprobowac wyslac 
@@ -217,7 +147,7 @@ void czytanieStruktury(int fileDescriptor)
 
 void dodanie_do_epoll(int fileDescriptor, int typDoEpoll)
 {
-    printf("dodawanie do epoll AAAA\n");
+    //printf("dodawanie do epoll AAAA\n");
 
     struct epoll_event structEvent;
 
