@@ -19,10 +19,10 @@
 #include <sys/random.h>
 
 //#define MAX 80
-int server_fd;
-
-struct sockaddr_in address;
-
+int server_fd; // fd servera z AF_LOCAL;
+int epoll_fd; // 
+//struct sockaddr_in address;
+struct sockaddr_un address;
 
 
 
@@ -33,6 +33,9 @@ void tworzenie_serwer(int port);
 void nonBlock(int fileDescriptor);
 
 void losoweDane(struct sockaddr_un* sockaddrStruct);
+void polaczenieJakoKlient(int* socketTemp, int* port);
+void tworzenie_serwer(int port);
+void dodanie_do_epoll(int fileDesc, int typDoEpoll);
 
 int main(int argc, char** argv)
 {
@@ -45,14 +48,23 @@ int main(int argc, char** argv)
    //mySockaddr.sun_family = AF_LOCAL;
    //mySockaddr.sun_path =  // tutaj random "\0, 107 bajtow";
 
+/////////////////////////////////////////////////////////
+    if ((epoll_fd = epoll_create1(0)) == -1)
+    {
+        printf("Blad tworzenie epoll main\n");
+        exit(-1);
+    }
+
     struct sockaddr_un mySockaddrUN;
     losoweDane(&mySockaddrUN);
 
 
     czytanieParametrow(argc, argv, &iloscPolaczen, &port,
          &odstepCzasowy, &calkowityCzasPracy);
+    // tworzenie_serwer(port);
+    // dodanie_do_epoll(server_fd, EPOLLIN | EPOLLET);
 
-    write(1, mySockaddrUN.sun_path, 108);
+    //write(1, mySockaddrUN.sun_path, 108);
     
 
     // utworzenie socketu
@@ -68,26 +80,35 @@ int main(int argc, char** argv)
 
     memset(cli_addr.sin_zero, 0, 8);
 
-    if ( connect(mySocket, (struct sockaddr*)&cli_addr, sizeof(cli_addr)) != 0)
-    {
-        printf("Nie udalo sie polaczyc\n");
-        exit(-1);
-    }
+    // if ( connect(mySocket, (struct sockaddr*)&cli_addr, sizeof(cli_addr)) == -1)
+    // {
+    //     printf("Nie udalo sie polaczyc\n");
+    //     exit(-1);
+    // }
 
 
-    else 
+    ///else 
     {
-        printf("Udalo sie polaczyc!\n");
+    //    printf("Udalo sie polaczyc!\n");
         //write(mySocket, )
-        while(1)
+        // while(1)
+        // {
+        //     printf("Wysylam\n");
+        //     write(mySocket, "TUTAJ KLIENT", 50);
+        //     sleep(1);
+        // }
+        polaczenieJakoKlient(&mySocket, &port);
+        losoweDane(&mySockaddrUN);
+
+        for(int i = 0; i < iloscPolaczen; i++)
         {
-            printf("Wysylam\n");
-            write(mySocket, "TUTAJ KLIENT", 50);
+            write(mySocket, &mySockaddrUN, sizeof(mySockaddrUN));
             sleep(1);
         }
+
     }
     
-    sleep(100);
+    //sleep(100);
 
   exit(1);
 }
@@ -139,29 +160,34 @@ void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
 }
 
 
-void tworzenie_serwer(int port)
-{
+// void tworzenie_serwer(int port)
+// {
    
-    if ( (server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0 )
-    {
-        printf("Blad - tworzenie serwera\n");
-        exit(-2);
-    }
+//     if ( (server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0 )
+//     {
+//         printf("Blad - tworzenie serwera\n");
+//         exit(-2);
+//     }
 
-    address.sin_family = AF_INET; 
-    //address.sin_addr.s_addr = INADDR_ANY; 
-    address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    address.sin_port = htons( port ); 
-    // dopisac memset address.sin_zero ( jest w kliencie )
+//     //address.sin_family = AF_INET; 
+//     //address.sin_family = AF_LOCAL;
+//     //address.sin_addr.s_addr = INADDR_ANY; 
+//     //address.sin_addr.s_addr = inet_addr("127.0.0.1");
+//     //address.sin_port = htons( port ); 
+//     // dopisac memset address.sin_zero ( jest w kliencie )
 
-    if ( bind(server_fd, (struct sockaddr *)&address, sizeof(address) ) < 0 )
-    {
-        printf("Blad bind - tworzenie serwera\n");
-        exit(-3);
-    }
+//     address.sun_family = AF_LOCAL;
+//     address.sun_path = 
 
-    nonBlock(server_fd);
-}
+
+//     if ( bind(server_fd, (struct sockaddr *)&address, sizeof(address) ) < 0 )
+//     {
+//         printf("Blad bind - tworzenie serwera\n");
+//         exit(-3);
+//     }
+
+//     nonBlock(server_fd);
+// }
 
 
 void nonBlock(int fileDescriptor)
@@ -175,10 +201,10 @@ void nonBlock(int fileDescriptor)
     }
 
     if ( fcntl(fileDescriptor, F_SETFL, flagi | O_NONBLOCK) == -1)
-   {
+    {
        printf("Blad nonBlock, doklejanie flagi - serwer\n");
        exit(-1);
-   } 
+    } 
 
 }
 
@@ -192,4 +218,40 @@ void losoweDane(struct sockaddr_un* sockaddrStruct)
     strcpy(&sockaddrStruct->sun_path[1], tempBuffer);
 
     free(tempBuffer);
+}
+
+void polaczenieJakoKlient(int* socketTemp, int* port)
+{
+    *socketTemp = socket(AF_INET, SOCK_STREAM, 0);
+
+    // sprawdzenie czy socket dziala
+
+    // tworze strukture 
+    struct sockaddr_in tempSockaddr;
+
+    tempSockaddr.sin_family = AF_INET; 
+    tempSockaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    tempSockaddr.sin_port = htons( *port ); 
+
+
+    connect(*socketTemp, (struct sockaddr*)&tempSockaddr, sizeof(tempSockaddr));
+    // sprawdzic czy dziala
+}
+
+
+void dodanie_do_epoll(int fileDescriptor, int typDoEpoll)
+{
+    //printf("dodawanie do epoll AAAA\n");
+
+    struct epoll_event structEvent;
+
+    structEvent.data.fd = fileDescriptor;
+    structEvent.events = typDoEpoll;
+
+   //if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &structEvent) == -1 )
+   if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fileDescriptor, &structEvent) == -1 )
+   {
+       printf("Blad dodanie_do_epoll - serwer\n");
+       exit(-1);
+   }
 }

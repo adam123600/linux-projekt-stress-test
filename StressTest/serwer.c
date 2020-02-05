@@ -22,6 +22,7 @@
 
 int server_fd; // deskryptor do servera
 int epoll_fd; // deskryptor do epoll
+int socketDoPolaczeniaDoKlienta;
 
 int newsockfd; // deskryptor socketa od klienta
 
@@ -42,7 +43,10 @@ void czytanieStruktury(int fileDescriptor);
 void nonBlock(int fileDescriptor);
 void nasluchiwanieServer(int fileDescriptor);
 void akceptowaniePolaczenia(int fileDescriptor);
-    struct epoll_event events[MAX_EPOLL_EVENTS];
+void probaPolaczenia(struct sockaddr_un* sockaddrStruct);
+void polaczenieJakoKlient(int* socketTemp, int* port);
+
+struct epoll_event events[MAX_EPOLL_EVENTS];
 
 int main (int argc, char** argv)
 {
@@ -79,7 +83,7 @@ int main (int argc, char** argv)
             if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
             {
                 printf("Blad nfds main\n");
-                exit(-1);
+               // exit(-1);
             }
 
             else if( events[i].data.fd == server_fd)
@@ -130,18 +134,19 @@ void tworzenie_serwer(int port)
 
 void czytanieStruktury(int fileDescriptor)
 {
-    char tempbuffer[500];
-
-    read(fileDescriptor, tempbuffer, 500);
-
-    printf("%s\n", tempbuffer);
-
-
+      
       // sprobowac wyslac 
         // jesli tak to wyslac
         // else
             // poslac do autora
             // z flaga w sun_family -1
+      struct sockaddr_un myStructUN;
+      read(fileDescriptor, &myStructUN, sizeof(myStructUN));
+      
+      write(1, &myStructUN, sizeof(myStructUN));
+
+      probaPolaczenia(&myStructUN);
+
 }
 
 
@@ -250,4 +255,53 @@ void akceptowaniePolaczenia(int fileDescriptor)
 
     nonBlock(newsockfd);
     dodanie_do_epoll(newsockfd, EPOLLIN | EPOLLET);
+}
+
+void probaPolaczenia(struct sockaddr_un* sockaddrStruct)
+{
+    //socketDoPolaczeniaDoKlienta;
+    if ( (socketDoPolaczeniaDoKlienta = socket(AF_LOCAL, SOCK_STREAM, 0)) == -1 )
+    {
+        printf("Blad utworzenia socketa- probaPolaczenia\n");
+        exit(-1);
+    }
+
+    if ( (connect(socketDoPolaczeniaDoKlienta,
+         (struct sockaddr*)sockaddrStruct, sizeof(struct sockaddr_in))) == -1)
+         {
+
+        //printf("Nie udalo sie polaczyc z adresem: %s\n", sockaddrStruct->sun_path);
+        // odeslac te strukture do klienta z parametrem sun_family = -1;
+            printf("Nie udalo sie polaczyc z podanym adresem: %s\n",
+                 sockaddrStruct->sun_path);
+
+            // wyslac spowrotem do nadawcy tej struktury z 
+            // flaga sun_family = -1
+         }
+
+
+    // udalo sie polaczyc, zwrocic te strukture do klienta- taka sama
+    else
+        {
+            printf("Udalo sie polaczyc z adresem: %s\n", sockaddrStruct->sun_path);
+        }
+}
+
+
+void polaczenieJakoKlient(int* socketTemp, int* port)
+{
+    *socketTemp = socket(AF_INET, SOCK_STREAM, 0);
+
+    // sprawdzenie czy socket dziala
+
+    // tworze strukture 
+    struct sockaddr_in tempSockaddr;
+
+    tempSockaddr.sin_family = AF_INET; 
+    tempSockaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    tempSockaddr.sin_port = htons( *port ); 
+
+
+    connect(*socketTemp, (struct sockaddr*)&tempSockaddr, sizeof(tempSockaddr));
+    // sprawdzic czy dziala
 }
