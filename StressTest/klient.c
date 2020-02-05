@@ -54,6 +54,8 @@ int main(int argc, char** argv)
     else 
     {
         printf("Udalo sie polaczyc!\n");
+        //write(mySocket, )
+        write(mySocket, "ASDASD", strlen("ASDASD"));
     }
     
     sleep(100);
