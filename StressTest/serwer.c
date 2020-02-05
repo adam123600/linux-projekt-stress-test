@@ -26,7 +26,7 @@ int epoll_fd; // deskryptor do epoll
 int newsockfd; // deskryptor socketa od klienta
 
 struct sockaddr_in address;
-struct  epoll_event ev; // struktura do epolla
+struct epoll_event ev; // struktura do epolla
 
 struct epoll_event evTemp; // struktura do funkcji: dodanie_do_epoll
 
@@ -42,6 +42,7 @@ void czytanieStruktury(int fileDescriptor);
 void nonBlock(int fileDescriptor);
 void nasluchiwanieServer(int fileDescriptor);
 void akceptowaniePolaczenia(int fileDescriptor);
+    struct epoll_event events[MAX_EPOLL_EVENTS];
 
 int main (int argc, char** argv)
 {
@@ -54,12 +55,17 @@ int main (int argc, char** argv)
     char* prefiksSciezki = NULL;
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
-    struct epoll_event events[MAX_EPOLL_EVENTS];
     int port;
 
     /////////////////////////////////////////////////////////
+    if ((epoll_fd = epoll_create1(0)) == -1)
+    {
+        printf("Blad tworzenie epoll main\n");
+        exit(-1);
+    }
     czytanieParametrow(argc, argv, &port, &prefiksSciezki);
     tworzenie_serwer(port);
+    dodanie_do_epoll(server_fd, EPOLLIN | EPOLLET);
     nasluchiwanieServer(server_fd);
 
 
@@ -80,15 +86,19 @@ int main (int argc, char** argv)
     //     printf("Blad calloc main\n");
     //     exit(-1);
     // }
-
+    printf("Przed whilem!\n");
 
     while(1)
     {
+        //int nfds;
         int nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
-
+        printf("Przed epoll wait\n");
+        printf("po epoll wait");
 
         for(int i = 0; i < nfds; i++)
         {
+            printf("Petla for\n");
+
             if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
             {
                 printf("Blad nfds main\n");
@@ -97,18 +107,23 @@ int main (int argc, char** argv)
 
             else if( events[i].data.fd == server_fd)
             {
+                printf("polczylo sie - ackeptowaniePolaczenia\n");
                 akceptowaniePolaczenia(events[i].data.fd);
-               // printf("polczylo sie - ackeptowaniePolaczenia\n");
+                read(events[i].data.fd, buffer, 50);
+                printf("%s\n", buffer);
             }
 
             else 
             {
                 // czytanie struktury 
-                printf("POLACZENIE AAAA\n");
+                printf("czytanie struktury \n");
                 czytanieStruktury(events[i].data.fd);
-                char* temp = (char*)calloc()
             }
         }
+
+        
+        
+        //read()
 
         sleep(1);
 
@@ -126,7 +141,7 @@ int main (int argc, char** argv)
 
 
         //printf("A\n");
-        sleep(1);
+       // sleep(1);
 
     }
 
@@ -151,7 +166,8 @@ void tworzenie_serwer(int port)
     }
 
     address.sin_family = AF_INET; 
-    address.sin_addr.s_addr = INADDR_ANY; 
+    //address.sin_addr.s_addr = INADDR_ANY; 
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");
     address.sin_port = htons( port ); 
     // dopisac memset address.sin_zero ( jest w kliencie )
 
@@ -166,15 +182,30 @@ void tworzenie_serwer(int port)
 
 void czytanieStruktury(int fileDescriptor)
 {
-      struct sockaddr_un structUn;
+    //   struct sockaddr_un structUn;
+         printf("czytanie struktury \n");
 
-      if ( read(fileDescriptor, &structUn, sizeof(structUn)) != sizeof(structUn))
-      {
-          printf("Blad czytania struktury - czytanieStruktury \n");
-          exit(-1);
-      }
+    //   if ( read(fileDescriptor, &structUn, sizeof(structUn)) != sizeof(structUn))
+    //   {
+    //       printf("Blad czytania struktury - czytanieStruktury \n");
+    //       exit(-1);
+    //   }
 
-     //printf("%s %d\n", structUn.sun_path, structUn.sun_family);
+    //  printf("czytanie struktury 2\n");
+    //  printf("%s %d\n", structUn.sun_path, structUn.sun_family);
+
+    char tempbuffer[500];
+
+    read(fileDescriptor, tempbuffer, 500);
+
+    printf("%s\n", tempbuffer);
+
+
+
+
+
+
+
 
       // sprobowac wyslac 
         // jesli tak to wyslac
@@ -186,12 +217,15 @@ void czytanieStruktury(int fileDescriptor)
 
 void dodanie_do_epoll(int fileDescriptor, int typDoEpoll)
 {
+    printf("dodawanie do epoll AAAA\n");
+
     struct epoll_event structEvent;
 
     structEvent.data.fd = fileDescriptor;
     structEvent.events = typDoEpoll;
 
-   if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &evTemp) == -1 )
+   //if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &structEvent) == -1 )
+   if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fileDescriptor, &structEvent) == -1 )
    {
        printf("Blad dodanie_do_epoll - serwer\n");
        exit(-1);
