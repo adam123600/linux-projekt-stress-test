@@ -41,7 +41,7 @@ void losoweDane(struct sockaddr_un* sockaddrStruct);
 void polaczenieJakoKlient(int* socketTemp, int* port);
 void dodanie_do_epoll(int fileDesc, int typDoEpoll);
 void nasluchiwanieServer(int fileDescriptor, int iloscPolaczen);
-void akceptowaniePolaczenia(int fileDescriptor);
+void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal);
 void czytanieStruktury(int fileDescriptor);
 void wyslanieStrukturyNaServer(struct sockaddr_un* sockaddrUN, int fileDescriptor, int iloscPolaczen);
 
@@ -66,6 +66,7 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
+    int* tablicaDeskryptorowLokal = (int*)calloc(iloscPolaczen, sizeof(int));
 
     ////////////////////////////////////////////////////
     struct sockaddr_un mySockaddrUN;
@@ -151,7 +152,7 @@ int main(int argc, char** argv)
                 {
                     /*int incomfd = */
                     //acceptConnection(events[i].data.fd, epoll_fd);
-                    akceptowaniePolaczenia(events[i].data.fd);
+                    akceptowaniePolaczenia(events[i].data.fd, &tablicaDeskryptorowLokal);
 
                     char buf[256];
                     read(server_fd, &buf, 30);
@@ -333,7 +334,7 @@ void nasluchiwanieServer(int fileDescriptor, int iloscPolaczen)
 }
 
 
-void akceptowaniePolaczenia(int fileDescriptor)
+void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal)
 {
     int tempFileDescriptor = 0;
 
@@ -344,8 +345,10 @@ void akceptowaniePolaczenia(int fileDescriptor)
     }
 
     nonBlock(tempFileDescriptor);
-
     dodanie_do_epoll(tempFileDescriptor, EPOLLIN | EPOLLET);
+
+    **tablicaDeskryptorowLokal = tempFileDescriptor;
+    (*tablicaDeskryptorowLokal) += 1;
 }
     
 void czytanieStruktury(int fileDescriptor)
