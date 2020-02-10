@@ -27,6 +27,9 @@ int epoll_fd; //
 struct sockaddr_un address;
 struct epoll_event events[MAX_EPOLL_EVENTS];
 
+int liczbaZaakceptowanychPolaczen;
+int liczbaOdrzuconychPolaczen;
+
 
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
             int* pPort, float* dOdstepCzasowy, float* tCalkowityCzasPracy);
@@ -50,6 +53,8 @@ int main(int argc, char** argv)
     int iloscPolaczen;
     float odstepCzasowy;
     float calkowityCzasPracy;
+    liczbaZaakceptowanychPolaczen = 0;
+    liczbaOdrzuconychPolaczen = 0;
 
     czytanieParametrow(argc, argv, &iloscPolaczen, &port,
          &odstepCzasowy, &calkowityCzasPracy);
@@ -365,11 +370,13 @@ void czytanieStruktury(int fileDescriptor)
       if ( (int)myStructUN.sun_family == -1)
       {
         printf("Przyszla struktura ze statusem sun_family = -1\n");
+        liczbaOdrzuconychPolaczen++;
       }
       
       else  
       {
           printf("Przyszla strutkura AF_LOCAL - czytanieStruktury = multiwriter\n");
+          liczbaZaakceptowanychPolaczen++;
       }
     }
       //probaPolaczenia(&myStructUN);
