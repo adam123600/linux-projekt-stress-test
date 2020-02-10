@@ -156,6 +156,7 @@ int main(int argc, char** argv)
                 }
                 else if (events[i].data.fd == socketClient)
                 {
+                    printf("CZYTANIE STURKTURY OLOLOLO\n");
                     czytanieStruktury(socketClient);
                 }
             }
@@ -364,6 +365,11 @@ void czytanieStruktury(int fileDescriptor)
       if ( (int)myStructUN.sun_family == -1)
       {
         printf("Przyszla struktura ze statusem sun_family = -1\n");
+      }
+      
+      else  
+      {
+          printf("Przyszla strutkura AF_LOCAL - czytanieStruktury = multiwriter\n");
       }
     }
       //probaPolaczenia(&myStructUN);
