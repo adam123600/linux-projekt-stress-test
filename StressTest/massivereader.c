@@ -86,50 +86,41 @@ int main (int argc, char** argv)
     }
     czytanieParametrow(argc, argv, &port, &prefiksSciezki);
     tworzenie_serwer(port);
-    //dodanie_do_epoll(server_fd, EPOLLIN | EPOLLET);
-
-    //nasluchiwanieServer(server_fd);
-
 
     while(1)
     {
         int nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
+        
+        if(nfds == -1)
+        {
+            printf("Blad nfds, main while(1) - massivereader\n");
+            exit(-1);
+        }
 
-        // for(int i = 0; i < nfds; i++)
-        // {
-
-        //     if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
-        //     {
-        //         printf("Blad nfds main\n");
-        //        // exit(-1);
-        //     }
-
-        //     else if( events[i].data.fd == server_fd)
-        //     {
-        //         akceptowaniePolaczenia(events[i].data.fd);
-        //     }
-
-        //     else 
-        //     {
-        //         czytanieStruktury(events[i].data.fd);
-        //     }
-        // }
 
         for(int i = 0; i < nfds; i++)
         {
-            printf("for count : %d\n", i);
-            printf("Typ polacznia: %d\n",(((struct typPolaczeniaStruct*)events[i].data.ptr)->typPolaczenia) );
+           // printf("for count : %d\n", i);
+         //   printf("Typ polacznia: %d\n",(((struct typPolaczeniaStruct*)events[i].data.ptr)->typPolaczenia) );
 
              if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
             {
-                printf("\n\nevents flag\n");
+                printf("\n\nEVENTS FLAGI MASSIVEREADER\n\n");
 
+
+                epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
+                //if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, NULL) == -1 )
+                // {
+                //     printf("Blad epoll_ctl while(1) main- masivereader\n");
+                //     exit(-1);
+                // }
+
+                //if ( close((struct typPolaczeniaStruct*)events[i].data.ptr)->typPolaczenia == -1)
                 // if(close (events[i].data.fd) == -1)
                 // {
                 //     printf("Cannot close file descriptor: %d", errno);
                 //     exit(-1);
                 // }
-                epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
             }
 
 
@@ -157,6 +148,17 @@ int main (int argc, char** argv)
                 printf("czytanie struktury i polaczenie af_local, odeslanie struktury\n");
                 //czytanieStruktury(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor); // w tym podejmuje proby polaczenia
                 probaPolaczenia(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
+            }
+
+            else
+            {
+               // printf("opcja 3 while1 main\n");
+                //czytanieStruktury(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor); // w tym podejmuje proby polaczenia
+                //probaPolaczenia(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
+                
+                read(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor, buffer, 5);
+                write(1, buffer, 5);
+                // czytanie struktury ktora przyjdzie po localu
             }
         }
         sleep(1);
@@ -325,14 +327,13 @@ void akceptowaniePolaczenia(int fileDescriptor)
     int addrlen = sizeof(address);
     int newsockfd;
 
-    if (( newsockfd = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) == -1)
+    if (( newsockfd = accept(fileDescriptor, (struct sockaddr *)&address, (socklen_t*)&addrlen)) == -1)
     {
             printf("Blad accept\n");
             exit(-1);
     }
 
     nonBlock(newsockfd);
-    //dodanie_do_epoll(newsockfd, EPOLLIN | EPOLLET);
 
     struct typPolaczeniaStruct* s = (struct typPolaczeniaStruct*)calloc(1, sizeof(struct typPolaczeniaStruct));
     s->fileDescriptor = newsockfd;
@@ -343,48 +344,18 @@ void akceptowaniePolaczenia(int fileDescriptor)
 //void probaPolaczenia(struct sockaddr_un* sockaddrStruct)
 void probaPolaczenia(int fileDescriptor)
 {
-    // //socketDoPolaczeniaDoKlienta;
-    // if ( (socketDoPolaczeniaDoKlienta = socket(AF_LOCAL, SOCK_STREAM, 0)) == -1 )
-    // {
-    //     printf("Blad utworzenia socketa- probaPolaczenia\n");
-    //     exit(-1);
-    // }
-
-    // if ( (connect(socketDoPolaczeniaDoKlienta,
-    //      (struct sockaddr*)sockaddrStruct, sizeof(struct sockaddr_in))) == -1)
-    //      {
-
-    //     //printf("Nie udalo sie polaczyc z adresem: %s\n", sockaddrStruct->sun_path);
-    //     // odeslac te strukture do klienta z parametrem sun_family = -1;
-    //         printf("Nie udalo sie polaczyc z podanym adresem: %s\n",
-    //              sockaddrStruct->sun_path);
-
-    //         // wyslac spowrotem do nadawcy tej struktury z 
-    //         // flaga sun_family = -1
-    //      }
-
-
-    // // udalo sie polaczyc, zwrocic te strukture do klienta- taka sama
-    // else
-    //     {
-    //         printf("Udalo sie polaczyc z adresem: %s\n", sockaddrStruct->sun_path);
-    //     }
 
     printf("PROBA POLACZENIA!!!\n");
 
     while(1)
-    {
-        //struct sockaddr_un* temp = (struct sockaddr_un*)calloc(1, sizeof(struct sockaddr_un));
+    {        
+        struct sockaddr_un myStructUN;
 
-        
-            struct sockaddr_un myStructUN;
-            if((read(fileDescriptor, &myStructUN, sizeof(struct sockaddr_un))) != sizeof(struct sockaddr_un))
-           {
-               printf("Blad czytania struktury, probaPolaczenia massivereader\n");
-               break;
-           }
-           // read(fileDescriptor, &myStructUN, sizeof(myStructUN));
-           // write(1, &myStructUN, sizeof(myStructUN));
+        if((read(fileDescriptor, &myStructUN, sizeof(struct sockaddr_un))) != sizeof(struct sockaddr_un))
+        {
+           printf("Blad czytania struktury, probaPolaczenia massivereader\n");
+           break;
+        }
 
             printf("ASDASD\n");
 
@@ -404,31 +375,6 @@ void probaPolaczenia(int fileDescriptor)
  
 
         sleep(1);
-        // if (( connect(socketDoPolaczeniaDoKlienta, (struct sockaddr *)&myStructUN, sizeof(struct sockaddr_un))) == -1)
-        // {
-        //     // nie udalo sie
-        //     printf("Nie udalo sie polaczyc z AF_LOCAL  ProbaPolaczenia\n");
-
-        //     // wyslanie struktury z sun_family = -1
-        //     //s->addressUn.sun_family = -1;
-        //     //sockaddrStruct->sun_family = -1;
-        //     myStructUN.sun_family = -1;
-        //     write(socketDoPolaczeniaDoKlienta, &myStructUN, sizeof(struct sockaddr_un));
-        //     write(1, &myStructUN, sizeof(struct sockaddr_un));
-            
-        //     //exit(-1);
-        //     //printf("Polaczono z lokalnym serwerem\n");
-        //     printf("Nie udalo sie polaczyc z serwerem lokalnym\n");
-        // }
-        // else  
-        // {
-        //     //nonBlock(socketDoPolaczeniaDoKlienta);
-
-        //     printf("Udalo sie polaczyc! ProbaPolaczenia\n");
-        //     write(socketDoPolaczeniaDoKlienta, &myStructUN, sizeof(struct sockaddr_un));
-        //     write(1, &myStructUN, sizeof(struct sockaddr_un));
-            
-        // }
     }
 
     printf("KONIEC PROBA POLACZENIA!!!\n");
@@ -475,7 +421,7 @@ int polaczenieKlientLokal(struct sockaddr_un* sockaddrUN)
         return (-1);
     }
 
-    nonBlock(socketTemp);
+    //nonBlock(socketTemp);
 
     struct typPolaczeniaStruct* s = (struct typPolaczeniaStruct*)calloc(1, sizeof(struct typPolaczeniaStruct));
     s->fileDescriptor = socketTemp;

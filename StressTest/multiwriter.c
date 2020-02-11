@@ -125,9 +125,9 @@ int main(int argc, char** argv)
                     //acceptConnection(events[i].data.fd, epoll_fd);
                     akceptowaniePolaczenia(events[i].data.fd, &tablicaDeskryptorowLokalWskaznik);
 
-                    char buf[256];
-                     read(server_fd, &buf, 30);
-                    write(1, &buf, 30);
+                    // char buf[256];
+                    //  read(server_fd, &buf, 30);
+                    // write(1, &buf, 30);
                     printf("polaczylo sie z LOCAL- acceptConnection\n");
 
                 }
@@ -153,9 +153,16 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-    
-    for(int i = 0; i < iloscPolaczen; i++)
+
+    int  i = 0;
+    while(iloscPolaczen--)
+    {
         printf("%d \n", tablicaDeskryptorowLokal[i]);
+        write(tablicaDeskryptorowLokal[i], "AAA", 4);
+        sleep(1);
+        i++;
+        
+    }
 
     //sleep(100);
 
