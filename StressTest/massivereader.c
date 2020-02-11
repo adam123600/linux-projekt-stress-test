@@ -156,8 +156,8 @@ int main (int argc, char** argv)
                 //czytanieStruktury(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor); // w tym podejmuje proby polaczenia
                 //probaPolaczenia(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
                 
-                read(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor, buffer, 5);
-                write(1, buffer, 10);
+                read(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor, buffer, 25);
+                write(1, buffer, 25);
                 // czytanie struktury ktora przyjdzie po localu
             }
         }

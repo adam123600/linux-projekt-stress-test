@@ -52,7 +52,7 @@ void czytanieStruktury(int fileDescriptor);
 void wyslanieStrukturyNaServer(struct sockaddr_un* sockaddrUN, int fileDescriptor, int iloscPolaczen);
 void utworzenieBudzikaINastawienie(float calkowityCzasPracy);
 char* reprezentacjaTekstowaCzasu(struct timespec strukturaCzas);
-
+void doWyslaniaPrzezLokal(int* tablicaDeskryptorowLokal, struct sockaddr_un sockaddrUN);
 
 int main(int argc, char** argv)
 {
@@ -171,15 +171,30 @@ int main(int argc, char** argv)
 
     printf("BUFOR CZASOWY!\n");
     struct timespec tempek;
-    tempek.tv_sec = 83;
-    tempek.tv_nsec = 120006789;
-    char * buforek = reprezentacjaTekstowaCzasu(tempek);
+    // tempek.tv_sec = 83;
+    // tempek.tv_nsec = 120006789;
+    //  char * buforek;
+    // for(int i = 0; i < 5; i++)
+    // {
+    //     clock_gettime(CLOCK_REALTIME, &tempek);
+    //     buforek = reprezentacjaTekstowaCzasu(tempek);
+    //     write(1, buforek, 21);
+    //     sleep(1);
+    // }
     //printf("BUFOR: ");
     //write(1, buforek, 20);
     printf("\n");
 
     int  i = 0;
-    // while(iloscPolaczen)
+
+    while(1)
+    {
+        doWyslaniaPrzezLokal(tablicaDeskryptorowLokal, mySockaddrUN);
+        nanosleep(&tim1, NULL);
+    }
+
+
+    // while(iloscPolaczen--)
     // {
     //     printf("%d \n", tablicaDeskryptorowLokal[i]);
     //     write(tablicaDeskryptorowLokal[i], "AAA\n", 6);
@@ -517,7 +532,44 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
     bufforWynikowy[18] = (char)(iloscNanosekund  /10          % 10) + '0';
     bufforWynikowy[19] = (char)(iloscNanosekund               % 10) + '0';
 
-    write(1, bufforWynikowy, 20);
+//    write(1, bufforWynikowy, 20);
 
     return bufforWynikowy;
+}
+
+
+void doWyslaniaPrzezLokal(int* tablicaDeskryptorowLokal, struct sockaddr_un sockaddrUN)
+{
+    srand(time(NULL));
+
+    struct timespec czasStart;
+    struct timespec czasKoniec;
+
+    char* czasString = 0;
+
+    if (clock_gettime(CLOCK_REALTIME, &czasStart) == -1)
+    {
+        printf("Blad clock_gettime, doWyslaniaPrzezLokal - multiwriter\n");
+        exit(-1);
+    }
+
+    czasString = reprezentacjaTekstowaCzasu(czasStart);
+
+ //   write(1, czasString, 21);
+
+    int losowyIndex = rand() % liczbaZaakceptowanychPolaczen;
+
+    while(tablicaDeskryptorowLokal[losowyIndex] == 0)
+    {
+        int losowyIndex = rand() % liczbaZaakceptowanychPolaczen;
+    }
+
+    // wyslac
+    // 1) tekstowa reprezentacja czasu
+    // 2) adres gniazda, ktory byl wyslany przy rejestracji
+    // 3) liczbowa wartosc znacznika (struktura timespec)
+
+    write(tablicaDeskryptorowLokal[losowyIndex], czasString, 21);
+    //write(tablicaDeskryptorowLokal[losowyIndex], &sockaddrUN.sun_path, 108);
+    //write(tablicaDeskryptorowLokal[losowyIndex], &czasStart, sizeof(czasStart));
 }
