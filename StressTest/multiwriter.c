@@ -17,6 +17,7 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <sys/random.h>
+#include <errno.h>
 
 #define MAX_EPOLL_EVENTS 100 
 
@@ -29,6 +30,11 @@ struct epoll_event events[MAX_EPOLL_EVENTS];
 
 int liczbaZaakceptowanychPolaczen;
 int liczbaOdrzuconychPolaczen;
+
+// struktury do budzika
+struct sigevent sev;
+struct itimerspec its;
+timer_t timerid;
 
 
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
@@ -44,7 +50,7 @@ void nasluchiwanieServer(int fileDescriptor, int iloscPolaczen);
 void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal);
 void czytanieStruktury(int fileDescriptor);
 void wyslanieStrukturyNaServer(struct sockaddr_un* sockaddrUN, int fileDescriptor, int iloscPolaczen);
-
+void utworzenieBudzikaINastawienie(float calkowityCzasPracy);
 
 
 int main(int argc, char** argv)
@@ -153,18 +159,17 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
+    utworzenieBudzikaINastawienie(calkowityCzasPracy);
 
     int  i = 0;
-    while(iloscPolaczen--)
+    while(iloscPolaczen)
     {
         printf("%d \n", tablicaDeskryptorowLokal[i]);
-        write(tablicaDeskryptorowLokal[i], "AAA", 4);
+        write(tablicaDeskryptorowLokal[i], "AAA\n", 6);
         sleep(1);
         i++;
-        
     }
 
-    //sleep(100);
 
   exit(1);
 
@@ -393,4 +398,36 @@ void wyslanieStrukturyNaServer(struct sockaddr_un* sockaddrUN, int fileDescripto
        }
     }
     printf("Wyslano %d polaczen\n", iloscPolaczen);
+}
+
+void utworzenieBudzikaINastawienie(float calkowityCzasPracy)
+{
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo = SIGUSR1;
+    sev.sigev_value.sival_ptr = &timerid;
+
+    if ( timer_create(CLOCK_REALTIME, &sev, &timerid) == -1)
+    {
+        printf("Blad utworzenia budzika\n");
+        exit(EXIT_FAILURE);
+    }
+
+
+    // zamiana z centy na nano
+    double tempTime = calkowityCzasPracy * 10000000;
+
+    its.it_value.tv_sec = (int) (tempTime / 1000000000);
+    its.it_value.tv_nsec = (long long) tempTime % 1000000000;
+    its.it_interval.tv_sec = 0;
+    its.it_interval.tv_nsec = 0;
+    // its.it_value.tv_sec = 2;
+    //  its.it_value.tv_nsec = 999999999;
+
+    if ( timer_settime(timerid, 0, &its, NULL) == -1 )
+    {
+        printf("Blad timer_settime, utworzenieBudzikaINastawienie\n");
+        printf("%d\n", errno);
+        // errno 22 - wychodzi po za zakres 
+        exit(-1);
+    }
 }
