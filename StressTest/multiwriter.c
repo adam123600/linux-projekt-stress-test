@@ -67,6 +67,7 @@ int main(int argc, char** argv)
     }
 
     int* tablicaDeskryptorowLokal = (int*)calloc(iloscPolaczen, sizeof(int));
+    int* tablicaDeskryptorowLokalWskaznik = tablicaDeskryptorowLokal;
 
     ////////////////////////////////////////////////////
     struct sockaddr_un mySockaddrUN;
@@ -82,47 +83,10 @@ int main(int argc, char** argv)
     ///////////////////////////////////////////////////
     wyslanieStrukturyNaServer(&mySockaddrUN, socketClient, iloscPolaczen);
 
-    // utworzenie socketu
-    // int mySocket = socket(AF_INET, SOCK_STREAM, 0);
-
-    // struct sockaddr_in cli_addr; // struktura do socketa- klient
-
-    // cli_addr.sin_port = htons(port);
-    // cli_addr.sin_family = AF_INET;
-    // cli_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
 
     
-
-    // if ( connect(mySocket, (struct sockaddr*)&cli_addr, sizeof(cli_addr)) == -1)
-    // {
-    //     printf("Nie udalo sie polaczyc\n");
-    //     exit(-1);
-    // }
-
-
-    // ///else 
-    // {
-    // //    printf("Udalo sie polaczyc!\n");
-    //     //write(mySocket, )
-    //     // while(1)
-    //     // {
-    //     //     printf("Wysylam\n");
-    //     //     write(mySocket, "TUTAJ KLIENT", 50);
-    //     //     sleep(1);
-    //     // }
-    //     //polaczenieJakoKlient(&mySocket, &port);
-    //     losoweDane(&mySockaddrUN);
-
-    //     for(int i = 0; i < iloscPolaczen; i++)
-    //     {
-    //         write(mySocket, &mySockaddrUN, sizeof(mySockaddrUN));
-    //         sleep(1);
-    //     }
-
-    // }
-    
-    while(1)
+    while(liczbaOdrzuconychPolaczen + liczbaZaakceptowanychPolaczen < iloscPolaczen)
     {
         int nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
         if(nfds == -1)
@@ -138,13 +102,18 @@ int main(int argc, char** argv)
             if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
             {
                 {
-                    if ((close(events[i].data.fd)) == -1)
+                    if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, NULL) == -1)
                     {
-                        printf("Multiwriter - main - close error %d ", errno);
+                        printf("Blad epoll_ctl_del, while(1) main multiwriter\n");
                         exit(-1);
                     }
-                    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
-                    printf("\n\nevents flag\n");
+
+                      for(int i = 0; i < iloscPolaczen; ++i)
+                            if(tablicaDeskryptorowLokal[i] == events[i].data.fd)
+                                tablicaDeskryptorowLokal[i] = 0;
+				      close(events[i].data.fd);
+
+                    printf("\n\nEVENTS FLAG!!!\n\n");
                 }
             }
 
@@ -154,7 +123,7 @@ int main(int argc, char** argv)
                 {
                     /*int incomfd = */
                     //acceptConnection(events[i].data.fd, epoll_fd);
-                    akceptowaniePolaczenia(events[i].data.fd, &tablicaDeskryptorowLokal);
+                    akceptowaniePolaczenia(events[i].data.fd, &tablicaDeskryptorowLokalWskaznik);
 
                     char buf[256];
                      read(server_fd, &buf, 30);
@@ -171,6 +140,23 @@ int main(int argc, char** argv)
         }
 
     }  
+
+    if ( epoll_ctl(epoll_fd, EPOLL_CTL_DEL, socketClient, NULL) == -1)
+    {
+        printf("Blad epoll_ctl, po while(1) main, multiwriter.c\n");
+        exit(-1);
+    }
+
+    if ( close(socketClient) == -1)
+    {
+        printf("Blad close socketClient, main po while(1), multiwriter.c\n");
+        exit(-1);
+    }
+
+    
+    for(int i = 0; i < iloscPolaczen; i++)
+        printf("%d \n", tablicaDeskryptorowLokal[i]);
+
     //sleep(100);
 
   exit(1);
@@ -348,12 +334,12 @@ void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal)
         exit(-1);
     }
 
-    nonBlock(tempFileDescriptor);
-    dodanie_do_epoll(tempFileDescriptor, EPOLLIN | EPOLLET);
+    //nonBlock(tempFileDescriptor);
 
     **tablicaDeskryptorowLokal = tempFileDescriptor;
     printf("TABLICA DESKRYPTOROW: %d\n", **tablicaDeskryptorowLokal);
     (*tablicaDeskryptorowLokal) += 1;
+    dodanie_do_epoll(tempFileDescriptor, EPOLLIN | EPOLLET);
 }
     
 void czytanieStruktury(int fileDescriptor)
@@ -387,7 +373,6 @@ void czytanieStruktury(int fileDescriptor)
           liczbaZaakceptowanychPolaczen++;
       }
     }
-      //probaPolaczenia(&myStructUN);
 }
 
 void wyslanieStrukturyNaServer(struct sockaddr_un* sockaddrUN, int fileDescriptor, int iloscPolaczen)
