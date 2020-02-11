@@ -131,6 +131,8 @@ int main(int argc, char** argv)
             exit(-1);
         }
 
+        printf("LICZBA NFDS: %d\n", nfds);
+
         for(int i = 0; i < nfds; i++)
         {
             if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
@@ -155,7 +157,7 @@ int main(int argc, char** argv)
                     akceptowaniePolaczenia(events[i].data.fd, &tablicaDeskryptorowLokal);
 
                     char buf[256];
-                    read(server_fd, &buf, 30);
+                     read(server_fd, &buf, 30);
                     write(1, &buf, 30);
                     printf("polaczylo sie z LOCAL- acceptConnection\n");
 
@@ -336,6 +338,8 @@ void nasluchiwanieServer(int fileDescriptor, int iloscPolaczen)
 
 void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal)
 {
+    printf("AKCEPTOWANIE POLACZENIA!!!!!!!!!!!!!\n");
+
     int tempFileDescriptor = 0;
 
     if (( tempFileDescriptor = accept(server_fd, NULL, NULL)) == -1)
@@ -348,6 +352,7 @@ void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal)
     dodanie_do_epoll(tempFileDescriptor, EPOLLIN | EPOLLET);
 
     **tablicaDeskryptorowLokal = tempFileDescriptor;
+    printf("TABLICA DESKRYPTOROW: %d\n", **tablicaDeskryptorowLokal);
     (*tablicaDeskryptorowLokal) += 1;
 }
     
