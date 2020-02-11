@@ -161,7 +161,7 @@ int main (int argc, char** argv)
                 // czytanie struktury ktora przyjdzie po localu
             }
         }
-        sleep(1);
+        //sleep(1);
     }
 
 
@@ -374,7 +374,7 @@ void probaPolaczenia(int fileDescriptor)
         }
  
 
-        sleep(1);
+        //sleep(1);
     }
 
     printf("KONIEC PROBA POLACZENIA!!!\n");

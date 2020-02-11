@@ -32,9 +32,9 @@ int liczbaZaakceptowanychPolaczen;
 int liczbaOdrzuconychPolaczen;
 
 // struktury do budzika
-struct sigevent sev;
-struct itimerspec its;
-timer_t timerid;
+// struct sigevent sev;
+// struct itimerspec its;
+// timer_t timerid;
 
 
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
@@ -51,6 +51,7 @@ void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal);
 void czytanieStruktury(int fileDescriptor);
 void wyslanieStrukturyNaServer(struct sockaddr_un* sockaddrUN, int fileDescriptor, int iloscPolaczen);
 void utworzenieBudzikaINastawienie(float calkowityCzasPracy);
+char* reprezentacjaTekstowaCzasu(struct timespec strukturaCzas);
 
 
 int main(int argc, char** argv)
@@ -161,14 +162,30 @@ int main(int argc, char** argv)
 
     utworzenieBudzikaINastawienie(calkowityCzasPracy);
 
+    // nanosleep - parametr: d <float>, czas w mikrosekundach: oznaczający mnożnik 0,000 001
+
+    struct timespec tim1;
+    tim1.tv_sec = (int) (odstepCzasowy / 1000000);
+    tim1.tv_nsec = (long long) odstepCzasowy % 1000000;
+
+
+    printf("BUFOR CZASOWY!\n");
+    struct timespec tempek;
+    tempek.tv_sec = 83;
+    tempek.tv_nsec = 120006789;
+    char * buforek = reprezentacjaTekstowaCzasu(tempek);
+    //printf("BUFOR: ");
+    //write(1, buforek, 20);
+    printf("\n");
+
     int  i = 0;
-    while(iloscPolaczen)
-    {
-        printf("%d \n", tablicaDeskryptorowLokal[i]);
-        write(tablicaDeskryptorowLokal[i], "AAA\n", 6);
-        sleep(1);
-        i++;
-    }
+    // while(iloscPolaczen)
+    // {
+    //     printf("%d \n", tablicaDeskryptorowLokal[i]);
+    //     write(tablicaDeskryptorowLokal[i], "AAA\n", 6);
+    //     nanosleep(&tim1, NULL);
+    //     i++;
+    // }
 
 
   exit(1);
@@ -402,6 +419,11 @@ void wyslanieStrukturyNaServer(struct sockaddr_un* sockaddrUN, int fileDescripto
 
 void utworzenieBudzikaINastawienie(float calkowityCzasPracy)
 {
+    struct sigevent sev;
+    struct itimerspec its;
+    timer_t timerid;
+
+
     sev.sigev_notify = SIGEV_SIGNAL;
     sev.sigev_signo = SIGUSR1;
     sev.sigev_value.sival_ptr = &timerid;
@@ -430,4 +452,72 @@ void utworzenieBudzikaINastawienie(float calkowityCzasPracy)
         // errno 22 - wychodzi po za zakres 
         exit(-1);
     }
+}
+
+char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
+{
+    char* bufforWynikowy = (char*)calloc(21, sizeof(char));
+    memset(bufforWynikowy, '0', 21);
+
+    int iloscMinut;
+    int iloscSekund;
+    long long iloscNanosekund;
+
+    iloscNanosekund = strukturaCzas.tv_nsec;
+
+    iloscSekund = strukturaCzas.tv_sec % 60;
+    iloscMinut = (strukturaCzas.tv_sec % 3600) / 60;
+
+    if ( iloscMinut < 10 )
+    {
+        bufforWynikowy[2] = (char)iloscMinut + '0';
+    }
+    
+    //bufforWynikowy[2] = (char)iloscMinut + '0';
+
+    else  
+    {
+        bufforWynikowy[2] = (char)(iloscMinut % 10) + '0'; 
+        bufforWynikowy[1] = (char)(iloscMinut / 10) + '0';
+    }
+    
+    //write(1, bufforWynikowy, 3);
+
+    bufforWynikowy[3] = '*';
+    bufforWynikowy[4] = ':';
+
+    if ( iloscSekund < 10 )
+    {
+        bufforWynikowy[6] = (char)iloscSekund + '0';
+    }
+
+    else
+    {
+        bufforWynikowy[6] = (char)(iloscSekund % 10) + '0';
+        bufforWynikowy[5] = (char)(iloscSekund / 10) + '0';
+    }
+
+
+    // for(int i = 19; i > 16; i--)
+    // {
+    //     bufforWynikowy[i] = (char)(iloscNanosekund % (i*10)) + '0';
+    // }
+
+    bufforWynikowy[7] = ',';
+    bufforWynikowy[8] = (char)(iloscNanosekund   /100000000   % 10) + '0';
+    bufforWynikowy[9] = (char)(iloscNanosekund   /10000000    % 10) + '0';
+    bufforWynikowy[10] = '.';
+    bufforWynikowy[11] = (char)(iloscNanosekund  /1000000     % 10) + '0';
+    bufforWynikowy[12] = (char)(iloscNanosekund  /100000      % 10) + '0';
+    bufforWynikowy[13] = '.';
+    bufforWynikowy[14] = (char)(iloscNanosekund  /10000       % 10) + '0';
+    bufforWynikowy[15] = (char)(iloscNanosekund  /1000        % 10) + '0';
+    bufforWynikowy[16] = '.';
+    bufforWynikowy[17] = (char)(iloscNanosekund  /100         % 10) + '0';
+    bufforWynikowy[18] = (char)(iloscNanosekund  /10          % 10) + '0';
+    bufforWynikowy[19] = (char)(iloscNanosekund               % 10) + '0';
+
+    write(1, bufforWynikowy, 20);
+
+    return bufforWynikowy;
 }
