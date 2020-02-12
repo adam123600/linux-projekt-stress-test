@@ -24,7 +24,6 @@
 
 int server_fd; // fd servera z AF_LOCAL;
 int epoll_fd; // 
-//struct sockaddr_in address;
 struct sockaddr_un address;
 struct epoll_event events[MAX_EPOLL_EVENTS];
 
@@ -32,11 +31,8 @@ int liczbaZaakceptowanychPolaczen;
 int liczbaOdrzuconychPolaczen;
 struct timespec czasSuma;
 int flagaPetlaWhile;
-// struktury do budzika
-// struct sigevent sev;
-// struct itimerspec its;
-// timer_t timerid;
-
+long long minimum;
+long long maximum;
 
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
             int* pPort, float* dOdstepCzasowy, float* tCalkowityCzasPracy);
@@ -67,13 +63,14 @@ int main(int argc, char** argv)
     liczbaZaakceptowanychPolaczen = 0;
     liczbaOdrzuconychPolaczen = 0;
     flagaPetlaWhile = 1;
+    minimum = 10000000000;
+    maximum = 0;
 
     obslugaSygnaluUSR1();
 
     czytanieParametrow(argc, argv, &iloscPolaczen, &port,
          &odstepCzasowy, &calkowityCzasPracy);
-/////////////////////////////////////////////////////////
-    
+
     if ((epoll_fd = epoll_create1(0)) == -1)
     {
         printf("Blad tworzenie epoll main\n");
@@ -101,17 +98,9 @@ int main(int argc, char** argv)
     
     while(liczbaOdrzuconychPolaczen + liczbaZaakceptowanychPolaczen < iloscPolaczen)
     {
-        printf("AAAAAAAAAAAAAA QTAZ\n");
 
         int nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
-        if(nfds == -1)
-        {
-            printf("Blad nfds, main - multiwriter\n");
-            exit(-1);
-        }
-
-        printf("LICZBA NFDS: %d\n", nfds);
-
+   
         for(int i = 0; i < nfds; i++)
         {
             if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
@@ -128,7 +117,6 @@ int main(int argc, char** argv)
                                 tablicaDeskryptorowLokal[i] = 0;
 				      close(events[i].data.fd);
 
-                    printf("\n\nEVENTS FLAG!!!\n\n");
                 }
             }
 
@@ -136,19 +124,11 @@ int main(int argc, char** argv)
             {
                 if (events[i].data.fd == server_fd)
                 {
-                    /*int incomfd = */
-                    //acceptConnection(events[i].data.fd, epoll_fd);
                     akceptowaniePolaczenia(events[i].data.fd, &tablicaDeskryptorowLokalWskaznik);
-
-                    // char buf[256];
-                    //  read(server_fd, &buf, 30);
-                    // write(1, &buf, 30);
-                    printf("polaczylo sie z LOCAL- acceptConnection\n");
-
                 }
+                
                 else if (events[i].data.fd == socketClient)
                 {
-                    printf("CZYTANIE STURKTURY OLOLOLO\n");
                     czytanieStruktury(socketClient);
                 }
             }
@@ -168,14 +148,12 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-   // utworzenieBudzikaINastawienie(calkowityCzasPracy);
     utworzenieBudzikaINastawienie(calkowityCzasPracy);  
-
-    // nanosleep - parametr: d <float>, czas w mikrosekundach: oznaczający mnożnik 0,000 001
 
     struct timespec tim1;
     tim1.tv_sec = (int) (odstepCzasowy / 1000000);
     tim1.tv_nsec = (long long) (odstepCzasowy*1000) % 1000000000;
+
 
     while(flagaPetlaWhile)
     {
@@ -184,8 +162,9 @@ int main(int argc, char** argv)
     }
 
     printf("CZAS: \n %li %li\n", czasSuma.tv_sec, czasSuma.tv_nsec);
+    printf("MINIMUM: %lld\tMAXIMUM: %lld\n", minimum, maximum);
 
-  exit(1);
+    exit(1);
 
 }
 void czytanieParametrow(int argc, char** argv, int* sIloscPolaczen,
@@ -387,7 +366,7 @@ void czytanieStruktury(int fileDescriptor)
         break;
       }
 
-      if ( (int)myStructUN.sun_family == -1)
+      if ( myStructUN.sun_family >= 65535)
       {
         printf("Przyszla struktura ze statusem sun_family = -1\n");
         liczbaOdrzuconychPolaczen++;
@@ -537,13 +516,11 @@ void doWyslaniaPrzezLokal(int* tablicaDeskryptorowLokal, struct sockaddr_un sock
 
     czasString = reprezentacjaTekstowaCzasu(czasStart);
 
- //   write(1, czasString, 21);
-
     int losowyIndex = rand() % liczbaZaakceptowanychPolaczen;
 
     while(tablicaDeskryptorowLokal[losowyIndex] == 0)
     {
-        int losowyIndex = rand() % liczbaZaakceptowanychPolaczen;
+        losowyIndex = rand() % liczbaZaakceptowanychPolaczen;
     }
 
     // wyslac
@@ -576,21 +553,69 @@ void doWyslaniaPrzezLokal(int* tablicaDeskryptorowLokal, struct sockaddr_un sock
     }
 
     // roznica czasu
-    roznicaCzasu(czasStart, czasSuma);
+    roznicaCzasu(czasStart, czasKoniec);
 }
 
 
 void roznicaCzasu(struct timespec czasStart, struct timespec czasKoniec)
 {
-    czasStart.tv_sec +=czasKoniec.tv_sec - czasStart.tv_sec + ((czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)/1000000000);
-    long temp = (czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)%1000000000;
+    // czasStart.tv_sec += czasKoniec.tv_sec - czasStart.tv_sec + ((czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)/1000000000);
+    // long temp = (czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)%1000000000;
 
-    if ( temp < 0)
-        czasSuma.tv_nsec = -temp;
-    else 
+    // if ( temp < 0)
+    //     czasSuma.tv_nsec = -temp;
+    // else 
+    // {
+    //     czasSuma.tv_nsec = temp;
+    // }
+
+    //     if( a->tv_nsec + b->tv_nsec >= (long)1e9 )
+    // {
+    //     wynik->tv_sec = a->tv_sec + b->tv_sec + 1;
+    //     wynik->tv_nsec= a->tv_nsec + b->tv_nsec - (long)1e9;
+    // }
+    // else
+    // {
+    //     wynik->tv_sec = a->tv_sec + b->tv_sec;
+    //     wynik->tv_nsec = a->tv_nsec + b->tv_nsec;
+    // }
+
+
+    long long nanoSekundy;
+    long long sekundy;
+
+    nanoSekundy = czasKoniec.tv_nsec - czasStart.tv_nsec;
+    sekundy = czasKoniec.tv_sec - czasStart.tv_sec;
+
+    if ( nanoSekundy < 0)
     {
-        czasSuma.tv_nsec = temp;
+        nanoSekundy = 1000000000 + nanoSekundy;
+        sekundy--;
     }
+
+    czasSuma.tv_sec += sekundy;
+
+    if ((czasSuma.tv_nsec + nanoSekundy) > 999999999)
+    {
+        czasSuma.tv_nsec = (czasSuma.tv_nsec + nanoSekundy) % 1000000000;
+        czasSuma.tv_sec++;
+    }
+
+    else
+    {
+        czasSuma.tv_nsec += nanoSekundy;
+    }
+
+    if ( nanoSekundy < minimum)
+    {
+        minimum = nanoSekundy;
+    }
+    if ( nanoSekundy > maximum)
+    {
+        maximum = nanoSekundy;
+    }
+
+    
 }
 
 void obslugaSygnaluUSR1()

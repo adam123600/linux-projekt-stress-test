@@ -15,6 +15,9 @@
 #include <arpa/inet.h> 
 #include <sys/epoll.h>
 #include <sys/un.h>
+#include <sys/socket.h>
+#include <sys/random.h>
+#include <errno.h>
 
 
 #define MAX_EPOLL_EVENTS 100
@@ -36,6 +39,7 @@ int socketDoPolaczeniaDoKlienta;
 int newsockfd; // deskryptor socketa od klienta
 int logFileDescriptor; // deskryptor do pliku z logami
 int liczbaPlikowOtwartychLogi;
+int flagaLogi;
 
 struct sockaddr_in address;
 struct epoll_event ev; // struktura do epolla
@@ -59,6 +63,8 @@ void wpisywanieDoPlikuLogi(struct typPolaczeniaStruct* typPolaczeniaStruct);
 void roznicaCzasu(struct timespec* czasStart,
          struct timespec* czasKoniec, struct timespec* czasRoznicaStruktura);
 
+void obslugaSygnaluUSR1();
+void handlerUSR1();
 
 int main (int argc, char** argv)
 {
@@ -72,6 +78,7 @@ int main (int argc, char** argv)
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
     int port;
+    flagaLogi = 0;
 
     /////////////////////////////////////////////////////////
     if ((epoll_fd = epoll_create1(0)) == -1)
@@ -79,6 +86,7 @@ int main (int argc, char** argv)
         printf("Blad tworzenie epoll main\n");
         exit(-1);
     }
+    obslugaSygnaluUSR1();
     czytanieParametrow(argc, argv, &port, &prefiksSciezki);
     tworzenie_serwer(port);
     utworzenieNowegoPlikuLogi(prefiksSciezki);
@@ -87,11 +95,12 @@ int main (int argc, char** argv)
     {
         int nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
         
-        if(nfds == -1)
-        {
-            printf("Blad nfds, main while(1) - massivereader\n");
-            exit(-1);
-        }
+        // if(nfds == -1)
+        // {
+        //     printf("Blad nfds, main while(1) - massivereader\n");
+        //     printf("%d\n", errno);
+        //     //exit(-1);
+        // }
 
 
         for(int i = 0; i < nfds; i++)
@@ -159,6 +168,12 @@ int main (int argc, char** argv)
                 // czytanie struktury ktora przyjdzie po localu
                 wpisywanieDoPlikuLogi(events[i].data.ptr);
             }
+        }
+
+        if(flagaLogi)
+        {
+            utworzenieNowegoPlikuLogi(prefiksSciezki);
+            flagaLogi = 0;
         }
         //sleep(1);
     }
@@ -640,3 +655,21 @@ void roznicaCzasu(struct timespec* czasStart,
             //  printf("SEK: %ld\nNANO: %ld\n", czasRoznicaStruktura->tv_sec,
             //     czasRoznicaStruktura->tv_nsec);
          }
+
+void obslugaSygnaluUSR1()
+{
+    struct sigaction sa;
+    sa.sa_flags = 0;
+    sa.sa_handler = handlerUSR1;
+
+    if ( sigaction(SIGUSR1, &sa, NULL) == -1)
+    {
+        printf("Blad sigaction- obslugaSygnaluUSR1, multiwriter\n");
+        exit(-1);
+    }
+}
+
+void handlerUSR1()
+{
+    flagaLogi = 1;
+}
