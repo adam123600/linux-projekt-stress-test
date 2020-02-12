@@ -582,18 +582,15 @@ void doWyslaniaPrzezLokal(int* tablicaDeskryptorowLokal, struct sockaddr_un sock
 
 void roznicaCzasu(struct timespec czasStart, struct timespec czasKoniec)
 {
-//     czasSuma.tv_sec += czasKoniec.tv_sec - czasStart.tv_sec + ((czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)/1000000000);
-//     long long liczbaNanoSekund = (czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)%1000000000;
-    
-//    if ( czasSuma.tv_nsec < 0 )
-//        liczbaNanoSekund = -liczbaNanoSekund;
-    
-//     czasSuma.tv_nsec = liczbaNanoSekund;
+    czasStart.tv_sec +=czasKoniec.tv_sec - czasStart.tv_sec + ((czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)/1000000000);
+    long temp = (czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)%1000000000;
 
-    czasSuma.tv_sec += czasStart.tv_sec - czasKoniec.tv_sec;
-
-
-
+    if ( temp < 0)
+        czasSuma.tv_nsec = -temp;
+    else 
+    {
+        czasSuma.tv_nsec = temp;
+    }
 }
 
 void obslugaSygnaluUSR1()

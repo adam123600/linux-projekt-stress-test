@@ -30,40 +30,35 @@ struct typPolaczeniaStruct{
     struct sockaddr_un addressUn;
 };
 
-
-
 int server_fd; // deskryptor do servera
 int epoll_fd; // deskryptor do epoll
 int socketDoPolaczeniaDoKlienta;
-
 int newsockfd; // deskryptor socketa od klienta
+int logFileDescriptor; // deskryptor do pliku z logami
+int liczbaPlikowOtwartychLogi;
 
 struct sockaddr_in address;
 struct epoll_event ev; // struktura do epolla
-
 struct epoll_event evTemp; // struktura do funkcji: dodanie_do_epoll
+struct epoll_event events[MAX_EPOLL_EVENTS];
 
 void tworzenie_serwer(int port);
-
 void tworzenie_epoll();
-//void dodanie_do_epoll(int fileDesc, int typDoEpoll);
 void dodanie_do_epoll(struct typPolaczeniaStruct* strukturaTypPolaczenia, int typDoEpoll);
-
 void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki);
-
 void czytanieStruktury(int fileDescriptor);
-
 void nonBlock(int fileDescriptor);
 void nasluchiwanieServer(int fileDescriptor);
 void akceptowaniePolaczenia(int fileDescriptor);
-//void probaPolaczenia(struct sockaddr_un* sockaddrStruct);
 void polaczenieJakoKlient(int* socketTemp, int* port);
-
 void probaPolaczenia(int fileDescriptor);
-
 int polaczenieKlientLokal(struct sockaddr_un* sockaddrUN);
+char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas);
+void utworzenieNowegoPlikuLogi(char* prefiksSciezki);
+void wpisywanieDoPlikuLogi(struct typPolaczeniaStruct* typPolaczeniaStruct);
+void roznicaCzasu(struct timespec* czasStart,
+         struct timespec* czasKoniec, struct timespec* czasRoznicaStruktura);
 
-struct epoll_event events[MAX_EPOLL_EVENTS];
 
 int main (int argc, char** argv)
 {
@@ -86,6 +81,7 @@ int main (int argc, char** argv)
     }
     czytanieParametrow(argc, argv, &port, &prefiksSciezki);
     tworzenie_serwer(port);
+    utworzenieNowegoPlikuLogi(prefiksSciezki);
 
     while(1)
     {
@@ -156,11 +152,12 @@ int main (int argc, char** argv)
                 //czytanieStruktury(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor); // w tym podejmuje proby polaczenia
                 //probaPolaczenia(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
                 
-                read(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor, buffer, 21);
-                printf("DESKRYPTOR NR %d\n", ((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
-                write(1, buffer, 21);
-                printf("\n\n");
+               // read(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor, buffer, 21);
+               // printf("DESKRYPTOR NR %d\n", ((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
+               // write(1, buffer, 21);
+               // printf("\n\n");
                 // czytanie struktury ktora przyjdzie po localu
+                wpisywanieDoPlikuLogi(events[i].data.ptr);
             }
         }
         //sleep(1);
@@ -434,3 +431,212 @@ int polaczenieKlientLokal(struct sockaddr_un* sockaddrUN)
 
     return 1;
 }
+
+char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
+{
+    char* bufforWynikowy = (char*)calloc(21, sizeof(char));
+    memset(bufforWynikowy, '0', 21);
+
+    int iloscMinut;
+    int iloscSekund;
+    long long iloscNanosekund;
+
+    iloscNanosekund = strukturaCzas.tv_nsec;
+
+    iloscSekund = strukturaCzas.tv_sec % 60;
+    iloscMinut = (strukturaCzas.tv_sec % 3600) / 60;
+
+    if ( iloscMinut < 10 )
+    {
+        bufforWynikowy[2] = (char)iloscMinut + '0';
+    }
+    
+    //bufforWynikowy[2] = (char)iloscMinut + '0';
+
+    else  
+    {
+        bufforWynikowy[2] = (char)(iloscMinut % 10) + '0'; 
+        bufforWynikowy[1] = (char)(iloscMinut / 10) + '0';
+    }
+    
+    //write(1, bufforWynikowy, 3);
+
+    bufforWynikowy[3] = '*';
+    bufforWynikowy[4] = ':';
+
+    if ( iloscSekund < 10 )
+    {
+        bufforWynikowy[6] = (char)iloscSekund + '0';
+    }
+
+    else
+    {
+        bufforWynikowy[6] = (char)(iloscSekund % 10) + '0';
+        bufforWynikowy[5] = (char)(iloscSekund / 10) + '0';
+    }
+
+
+    // for(int i = 19; i > 16; i--)
+    // {
+    //     bufforWynikowy[i] = (char)(iloscNanosekund % (i*10)) + '0';
+    // }
+
+    bufforWynikowy[7] = ',';
+    bufforWynikowy[8] = (char)(iloscNanosekund   /100000000   % 10) + '0';
+    bufforWynikowy[9] = (char)(iloscNanosekund   /10000000    % 10) + '0';
+    bufforWynikowy[10] = '.';
+    bufforWynikowy[11] = (char)(iloscNanosekund  /1000000     % 10) + '0';
+    bufforWynikowy[12] = (char)(iloscNanosekund  /100000      % 10) + '0';
+    bufforWynikowy[13] = '.';
+    bufforWynikowy[14] = (char)(iloscNanosekund  /10000       % 10) + '0';
+    bufforWynikowy[15] = (char)(iloscNanosekund  /1000        % 10) + '0';
+    bufforWynikowy[16] = '.';
+    bufforWynikowy[17] = (char)(iloscNanosekund  /100         % 10) + '0';
+    bufforWynikowy[18] = (char)(iloscNanosekund  /10          % 10) + '0';
+    bufforWynikowy[19] = (char)(iloscNanosekund               % 10) + '0';
+
+//    write(1, bufforWynikowy, 20);
+
+    return bufforWynikowy;
+}
+
+
+void utworzenieNowegoPlikuLogi(char* prefiksSciezki)
+{
+    char tempSciezka[1024];
+    // deskryptor pliku --> logFileDescriptor
+
+    int nowyFd = -1;
+
+    while(nowyFd == -1)
+    {
+        sprintf(tempSciezka, "%s%03d", prefiksSciezki, liczbaPlikowOtwartychLogi++);
+        nowyFd = open(tempSciezka, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    }
+
+    close(logFileDescriptor);
+    logFileDescriptor = nowyFd;
+    
+}
+
+void wpisywanieDoPlikuLogi(struct typPolaczeniaStruct* typPolaczeniaStruct)
+{
+    // 1)wyznaczenie opoznienia
+    // 2)weryfikacja nadawcy
+    // 3)utworzenie reprezentacji tekstwocyh znacznika czasu i opoznieja, zgodnie z 3
+
+    char czasZMultiwriter[21];
+    char sciezkaZMultiwriter[108];
+    struct timespec czasZMultiwriterStruktura;
+    struct timespec czasAktualny;
+    struct timespec czasRoznica;
+
+    char* buffer = NULL;
+
+    if (read(typPolaczeniaStruct->fileDescriptor, &czasZMultiwriter, 21) != 21)
+    {
+        ///printf("BLAD ODCZYTANIA czasZmult\n");
+        printf("Blad read1, wpysywanieDoPlikuLogi, massivereader\n");
+        exit(-1);
+    }
+
+    if (read(typPolaczeniaStruct->fileDescriptor, &sciezkaZMultiwriter, 108) != 108)
+    {
+        printf("Blad read2, wpisywanieDoPlikuLogi, massivereader\n");
+        exit(-1);
+    }
+    
+    if (read(typPolaczeniaStruct->fileDescriptor, &czasZMultiwriterStruktura, sizeof(struct timespec)) != sizeof(struct timespec))
+    {
+        printf("Blad read3, wpisywanieDoPlikuLogi, massivereader\n");
+        exit(-1);
+    }
+
+    if ( clock_gettime(CLOCK_REALTIME, &czasAktualny) == -1)
+    {
+        printf("Blad clock_gettime, wpyisywanieDoPlikuLogi,, massivereader\n");
+        exit(-1);
+    }
+
+    roznicaCzasu(&czasZMultiwriterStruktura, &czasAktualny, &czasRoznica);
+
+    
+    if ( strcmp(typPolaczeniaStruct->addressUn.sun_path, sciezkaZMultiwriter))
+    {
+        return;
+    }
+
+
+    //buffer = reprezentacjaTekstowaCzasu(czasRoznica);
+    buffer = reprezentacjaTekstowaCzasu(czasAktualny);
+
+    //write(logFileDescriptor, "ASD\n", strlen("ASD\n"));
+
+    if ( write(logFileDescriptor, buffer, 20) < 20)
+    {
+        printf("BLAD ASDASD\n");
+        exit(-1);
+    }
+
+    
+    if ( write(logFileDescriptor, " : ", strlen(" : ")) < strlen(" : "))
+    {
+        printf("BLAD ASDASD\n");
+        exit(-1);
+    }
+
+    if ( write(logFileDescriptor, czasZMultiwriter, 20) < 20)
+    {
+        printf("BLAD ASDASD\n");
+        exit(-1);
+    }
+
+    if ( write(logFileDescriptor, " : ", strlen(" : ")) < strlen(" : "))
+    {
+        printf("BLAD ASDASD\n");
+        exit(-1);
+    }
+    
+    buffer = reprezentacjaTekstowaCzasu(czasRoznica);
+
+    if ( write(logFileDescriptor, buffer, 20) < 20)
+    {
+        printf("BLAD ASDASD\n");
+        exit(-1);
+    }
+
+    write(logFileDescriptor, "\n", strlen("\n"));
+
+
+
+
+    //write(1, czasZMultiwriter, 21);
+    //write(1, "\n", 1);
+    //write(1, sciezkaZMultiwriter, 108);
+}
+
+void roznicaCzasu(struct timespec* czasStart,
+         struct timespec* czasKoniec, struct timespec* czasRoznicaStruktura)
+         {
+             long long start;
+             long long koniec;
+             long long roznica;
+
+             memset(czasRoznicaStruktura, 0, sizeof(struct timespec));
+
+             start =  czasStart->tv_sec * 1000000000 + czasStart->tv_nsec;
+             koniec = czasKoniec->tv_sec * 1000000000 + czasKoniec->tv_nsec;
+
+             roznica = koniec - start;
+
+             czasRoznicaStruktura->tv_sec = roznica / 1000000000;
+             
+             czasRoznicaStruktura->tv_nsec = roznica % 1000000000;
+
+            // if( roznica % 1000000000 < 0)
+            //     czasRoznicaStruktura->tv_nsec = -(roznica % 1000000000);
+                
+
+            //  printf("SEK: %ld\nNANO: %ld\n", czasRoznicaStruktura->tv_sec,
+            //     czasRoznicaStruktura->tv_nsec);
+         }
