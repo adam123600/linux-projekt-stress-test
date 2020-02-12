@@ -156,8 +156,10 @@ int main (int argc, char** argv)
                 //czytanieStruktury(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor); // w tym podejmuje proby polaczenia
                 //probaPolaczenia(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
                 
-                read(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor, buffer, 25);
-                write(1, buffer, 25);
+                read(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor, buffer, 21);
+                printf("DESKRYPTOR NR %d\n", ((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
+                write(1, buffer, 21);
+                printf("\n\n");
                 // czytanie struktury ktora przyjdzie po localu
             }
         }
@@ -312,7 +314,7 @@ void nonBlock(int fileDescriptor)
 
 void nasluchiwanieServer(int fileDescriptor)
 {
-    if ( listen(server_fd, 5) < 0)
+    if ( listen(server_fd, 50) < 0)
     {
         printf("Blad listen main \n");
         exit(-1);
