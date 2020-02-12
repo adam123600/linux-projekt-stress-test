@@ -24,10 +24,6 @@
 
 
 struct typPolaczeniaStruct{
-     
-    // int fd;
-    // int type;                       // 1-server     2-inet      3-local
-    // struct sockaddr_un address;
     int fileDescriptor;
     int typPolaczenia; // 1-server     2-inet      3-local
     struct sockaddr_un addressUn;
@@ -68,6 +64,8 @@ void handlerUSR1();
 
 int main (int argc, char** argv)
 {
+    printf("MassiveReader: Jestem gotowy na polaczenia!\n");
+
     int sockfd;
     int newsockfd = 0;
     int portno;
@@ -80,12 +78,12 @@ int main (int argc, char** argv)
     int port;
     flagaLogi = 0;
 
-    /////////////////////////////////////////////////////////
     if ((epoll_fd = epoll_create1(0)) == -1)
     {
         printf("Blad tworzenie epoll main\n");
         exit(-1);
     }
+
     obslugaSygnaluUSR1();
     czytanieParametrow(argc, argv, &port, &prefiksSciezki);
     tworzenie_serwer(port);
@@ -94,78 +92,28 @@ int main (int argc, char** argv)
     while(1)
     {
         int nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
-        
-        // if(nfds == -1)
-        // {
-        //     printf("Blad nfds, main while(1) - massivereader\n");
-        //     printf("%d\n", errno);
-        //     //exit(-1);
-        // }
-
 
         for(int i = 0; i < nfds; i++)
         {
-           // printf("for count : %d\n", i);
-         //   printf("Typ polacznia: %d\n",(((struct typPolaczeniaStruct*)events[i].data.ptr)->typPolaczenia) );
 
              if (events[i].events & EPOLLERR || events[i].events & EPOLLHUP || !(events[i].events & EPOLLIN))
             {
-                printf("\n\nEVENTS FLAGI MASSIVEREADER\n\n");
-
-
                 epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
-                //if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, NULL) == -1 )
-                // {
-                //     printf("Blad epoll_ctl while(1) main- masivereader\n");
-                //     exit(-1);
-                // }
-
-                //if ( close((struct typPolaczeniaStruct*)events[i].data.ptr)->typPolaczenia == -1)
-                // if(close (events[i].data.fd) == -1)
-                // {
-                //     printf("Cannot close file descriptor: %d", errno);
-                //     exit(-1);
-                // }
             }
 
 
             else if ((((struct typPolaczeniaStruct*)events[i].data.ptr)->typPolaczenia) == 1 )
             {
-                /*
-                 * akceptuje połączenie AF_INET
-                 */
-
-                printf("Jestem w server inet\n");
-                /*int incomfd = */
-                //acceptConnection((((struct typeOfConnection*)events[i].data.ptr)->fd), epoll_fd);
                 akceptowaniePolaczenia(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
-                printf("Serwer inet akceptuje polaczenie\n");
-
             }
 
             else if(((struct typPolaczeniaStruct*)events[i].data.ptr)->typPolaczenia == 2 )
             {
-                /*
-                * czytam strukture z polączenie AF_INET
-                * tworze połaczenie AF_LOCAL
-                * odsyłam strukturę przez AF_INET
-                */
-                printf("czytanie struktury i polaczenie af_local, odeslanie struktury\n");
-                //czytanieStruktury(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor); // w tym podejmuje proby polaczenia
                 probaPolaczenia(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
             }
 
             else
             {
-               // printf("opcja 3 while1 main\n");
-                //czytanieStruktury(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor); // w tym podejmuje proby polaczenia
-                //probaPolaczenia(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
-                
-               // read(((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor, buffer, 21);
-               // printf("DESKRYPTOR NR %d\n", ((struct typPolaczeniaStruct*)events[i].data.ptr)->fileDescriptor);
-               // write(1, buffer, 21);
-               // printf("\n\n");
-                // czytanie struktury ktora przyjdzie po localu
                 wpisywanieDoPlikuLogi(events[i].data.ptr);
             }
         }
@@ -175,7 +123,6 @@ int main (int argc, char** argv)
             utworzenieNowegoPlikuLogi(prefiksSciezki);
             flagaLogi = 0;
         }
-        //sleep(1);
     }
 
 
@@ -183,7 +130,6 @@ int main (int argc, char** argv)
     close(sockfd);
 
     return 0;
-
 }
 
 
@@ -197,11 +143,8 @@ void tworzenie_serwer(int port)
     }
 
     address.sin_family = AF_INET; 
-    //address.sin_addr.s_addr = INADDR_ANY; 
     address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    //inet_aton("127.0.0.1", (struct in_addr *) &address.sin_addr.s_addr);
     address.sin_port = htons( port ); 
-    // dopisac memset address.sin_zero ( jest w kliencie )
 
     if ( bind(server_fd, (struct sockaddr *)&address, sizeof(address) ) < 0 )
     {
@@ -217,42 +160,24 @@ void tworzenie_serwer(int port)
     dodanie_do_epoll(s, EPOLLIN | EPOLLET);
 
     nasluchiwanieServer(server_fd);
-
-    // sprobowac free s ( nie wiem czy mozna :-) )
 }
 
 void czytanieStruktury(int fileDescriptor)
 {
-      
-      // sprobowac wyslac 
-        // jesli tak to wyslac
-        // else
-            // poslac do autora
-            // z flaga w sun_family -1
-      struct sockaddr_un myStructUN;
-      read(fileDescriptor, &myStructUN, sizeof(myStructUN));
-      
-      write(1, &myStructUN, sizeof(myStructUN));
-
-    //  probaPolaczenia(&myStructUN);
+    struct sockaddr_un myStructUN;
+    read(fileDescriptor, &myStructUN, sizeof(myStructUN));
+    
     probaPolaczenia(fileDescriptor);
-
 }
 
 
-//void dodanie_do_epoll(int fileDescriptor, int typDoEpoll)
-//void dodanie_do_epoll(struct* typPolaczeniaStruct, int typDoEpoll)
 void dodanie_do_epoll(struct typPolaczeniaStruct* strukturaTypPolaczenia, int typDoEpoll)
 {
-    //printf("dodawanie do epoll AAAA\n");
-
     struct epoll_event structEvent;
 
-    //structEvent.data.fd = fileDescriptor;
     structEvent.data.ptr = strukturaTypPolaczenia;
     structEvent.events = typDoEpoll;
 
-   //if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &structEvent) == -1 )
    if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, ((struct typPolaczeniaStruct*)structEvent.data.ptr)->fileDescriptor, &structEvent) == -1 )
    {
        printf("Blad dodanie_do_epoll - serwer\n");
@@ -294,8 +219,6 @@ void czytanieParametrow(int argc, char** argv, int* port, char** prefiksSciezki)
         exit(-1);
     }
 
-
-
     *port = strtol(argv[optind], NULL, 10);
 
     if ( *port < 6000 || *port > 65535)
@@ -335,8 +258,7 @@ void nasluchiwanieServer(int fileDescriptor)
 
 void akceptowaniePolaczenia(int fileDescriptor)
 {
-   // struct sockaddr address;
-   struct sockaddr_in address;
+    struct sockaddr_in address;
 
     int addrlen = sizeof(address);
     int newsockfd;
@@ -355,43 +277,28 @@ void akceptowaniePolaczenia(int fileDescriptor)
     dodanie_do_epoll(s, EPOLLIN | EPOLLET);
 }
 
-//void probaPolaczenia(struct sockaddr_un* sockaddrStruct)
 void probaPolaczenia(int fileDescriptor)
 {
-
-    printf("PROBA POLACZENIA!!!\n");
-
     while(1)
-    {        
+    {    
         struct sockaddr_un myStructUN;
 
         if((read(fileDescriptor, &myStructUN, sizeof(struct sockaddr_un))) != sizeof(struct sockaddr_un))
         {
-           printf("Blad czytania struktury, probaPolaczenia massivereader\n");
            break;
         }
-
-            printf("ASDASD\n");
 
         if ( polaczenieKlientLokal(&myStructUN) == -1)
         {    
             myStructUN.sun_family = -1;
             write(fileDescriptor, &myStructUN, sizeof(struct sockaddr_un));
-            printf("Wyslalem strukture do INET     PROBA POLACZENIA\n");
         }
         
         else  
         {
-            printf("Udalo sie polaczyc! ProbaPolaczenia\n");
             write(fileDescriptor, &myStructUN, sizeof(struct sockaddr_un));
-            write(1, &myStructUN, sizeof(struct sockaddr_un));
         }
- 
-
-        //sleep(1);
     }
-
-    printf("KONIEC PROBA POLACZENIA!!!\n");
 }
 
 
@@ -399,43 +306,33 @@ void polaczenieJakoKlient(int* socketTemp, int* port)
 {
     *socketTemp = socket(AF_INET, SOCK_STREAM, 0);
 
-    // sprawdzenie czy socket dziala
-
     nonBlock(*socketTemp);
 
-    // tworze strukture 
     struct sockaddr_in tempSockaddr;
 
     tempSockaddr.sin_family = AF_INET; 
     tempSockaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     tempSockaddr.sin_port = htons( *port ); 
 
-
     connect(*socketTemp, (struct sockaddr*)&tempSockaddr, sizeof(tempSockaddr));
-    // sprawdzic czy dziala
 }
 
 
 int polaczenieKlientLokal(struct sockaddr_un* sockaddrUN)
 {
-
     int socketTemp;
 
     if ( (socketTemp = socket(AF_LOCAL, SOCK_STREAM, 0)) == -1 )
-        {
+    {
             printf("Blad utworzenia socketa- probaPolaczenia\n");
             return (-1);
-        }
-
-
+    }
 
     if (( connect(socketTemp, (struct sockaddr *)sockaddrUN, sizeof(struct sockaddr_un))) == -1)
     {
         printf("Blad connectu - polaczenieKlientLokal\n");
         return (-1);
     }
-
-    //nonBlock(socketTemp);
 
     struct typPolaczeniaStruct* s = (struct typPolaczeniaStruct*)calloc(1, sizeof(struct typPolaczeniaStruct));
     s->fileDescriptor = socketTemp;
@@ -465,16 +362,12 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
     {
         bufforWynikowy[2] = (char)iloscMinut + '0';
     }
-    
-    //bufforWynikowy[2] = (char)iloscMinut + '0';
 
     else  
     {
         bufforWynikowy[2] = (char)(iloscMinut % 10) + '0'; 
         bufforWynikowy[1] = (char)(iloscMinut / 10) + '0';
     }
-    
-    //write(1, bufforWynikowy, 3);
 
     bufforWynikowy[3] = '*';
     bufforWynikowy[4] = ':';
@@ -490,12 +383,6 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
         bufforWynikowy[5] = (char)(iloscSekund / 10) + '0';
     }
 
-
-    // for(int i = 19; i > 16; i--)
-    // {
-    //     bufforWynikowy[i] = (char)(iloscNanosekund % (i*10)) + '0';
-    // }
-
     bufforWynikowy[7] = ',';
     bufforWynikowy[8] = (char)(iloscNanosekund   /100000000   % 10) + '0';
     bufforWynikowy[9] = (char)(iloscNanosekund   /10000000    % 10) + '0';
@@ -510,8 +397,6 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
     bufforWynikowy[18] = (char)(iloscNanosekund  /10          % 10) + '0';
     bufforWynikowy[19] = (char)(iloscNanosekund               % 10) + '0';
 
-//    write(1, bufforWynikowy, 20);
-
     return bufforWynikowy;
 }
 
@@ -519,7 +404,6 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
 void utworzenieNowegoPlikuLogi(char* prefiksSciezki)
 {
     char tempSciezka[1024];
-    // deskryptor pliku --> logFileDescriptor
 
     int nowyFd = -1;
 
@@ -531,15 +415,10 @@ void utworzenieNowegoPlikuLogi(char* prefiksSciezki)
 
     close(logFileDescriptor);
     logFileDescriptor = nowyFd;
-    
 }
 
 void wpisywanieDoPlikuLogi(struct typPolaczeniaStruct* typPolaczeniaStruct)
 {
-    // 1)wyznaczenie opoznienia
-    // 2)weryfikacja nadawcy
-    // 3)utworzenie reprezentacji tekstwocyh znacznika czasu i opoznieja, zgodnie z 3
-
     char czasZMultiwriter[21];
     char sciezkaZMultiwriter[108];
     struct timespec czasZMultiwriterStruktura;
@@ -550,7 +429,6 @@ void wpisywanieDoPlikuLogi(struct typPolaczeniaStruct* typPolaczeniaStruct)
 
     if (read(typPolaczeniaStruct->fileDescriptor, &czasZMultiwriter, 21) != 21)
     {
-        ///printf("BLAD ODCZYTANIA czasZmult\n");
         printf("Blad read1, wpysywanieDoPlikuLogi, massivereader\n");
         exit(-1);
     }
@@ -574,41 +452,35 @@ void wpisywanieDoPlikuLogi(struct typPolaczeniaStruct* typPolaczeniaStruct)
     }
 
     roznicaCzasu(&czasZMultiwriterStruktura, &czasAktualny, &czasRoznica);
-
     
     if ( strcmp(typPolaczeniaStruct->addressUn.sun_path, sciezkaZMultiwriter))
     {
         return;
     }
 
-
-    //buffer = reprezentacjaTekstowaCzasu(czasRoznica);
     buffer = reprezentacjaTekstowaCzasu(czasAktualny);
-
-    //write(logFileDescriptor, "ASD\n", strlen("ASD\n"));
 
     if ( write(logFileDescriptor, buffer, 20) < 20)
     {
-        printf("BLAD ASDASD\n");
+        printf("BLAD1 pisania do pliku, wpisywanieDoPlikuLogi, massivereader");
         exit(-1);
     }
 
-    
     if ( write(logFileDescriptor, " : ", strlen(" : ")) < strlen(" : "))
     {
-        printf("BLAD ASDASD\n");
+        printf("BLAD2 pisania do pliku, wpisywanieDoPlikuLogi, massivereader");
         exit(-1);
     }
 
     if ( write(logFileDescriptor, czasZMultiwriter, 20) < 20)
     {
-        printf("BLAD ASDASD\n");
+        printf("BLAD3 pisania do pliku, wpisywanieDoPlikuLogi, massivereader");
         exit(-1);
     }
 
     if ( write(logFileDescriptor, " : ", strlen(" : ")) < strlen(" : "))
     {
-        printf("BLAD ASDASD\n");
+        printf("BLAD4 pisania do pliku, wpisywanieDoPlikuLogi, massivereader");
         exit(-1);
     }
     
@@ -616,18 +488,11 @@ void wpisywanieDoPlikuLogi(struct typPolaczeniaStruct* typPolaczeniaStruct)
 
     if ( write(logFileDescriptor, buffer, 20) < 20)
     {
-        printf("BLAD ASDASD\n");
+        printf("BLAD5 pisania do pliku, wpisywanieDoPlikuLogi, massivereader");
         exit(-1);
     }
 
     write(logFileDescriptor, "\n", strlen("\n"));
-
-
-
-
-    //write(1, czasZMultiwriter, 21);
-    //write(1, "\n", 1);
-    //write(1, sciezkaZMultiwriter, 108);
 }
 
 void roznicaCzasu(struct timespec* czasStart,
@@ -647,13 +512,6 @@ void roznicaCzasu(struct timespec* czasStart,
              czasRoznicaStruktura->tv_sec = roznica / 1000000000;
              
              czasRoznicaStruktura->tv_nsec = roznica % 1000000000;
-
-            // if( roznica % 1000000000 < 0)
-            //     czasRoznicaStruktura->tv_nsec = -(roznica % 1000000000);
-                
-
-            //  printf("SEK: %ld\nNANO: %ld\n", czasRoznicaStruktura->tv_sec,
-            //     czasRoznicaStruktura->tv_nsec);
          }
 
 void obslugaSygnaluUSR1()

@@ -56,6 +56,8 @@ void handlerUSR1();
 
 int main(int argc, char** argv)
 {
+    printf("MultiWriter: pracuje!\n");
+
     int port;
     int iloscPolaczen;
     float odstepCzasowy;
@@ -80,22 +82,17 @@ int main(int argc, char** argv)
     int* tablicaDeskryptorowLokal = (int*)calloc(iloscPolaczen, sizeof(int));
     int* tablicaDeskryptorowLokalWskaznik = tablicaDeskryptorowLokal;
 
-    ////////////////////////////////////////////////////
     struct sockaddr_un mySockaddrUN;
     losoweDane(&mySockaddrUN);
     tworzenie_serwer(mySockaddrUN);
     nasluchiwanieServer(server_fd, iloscPolaczen);
-    ///////////////////////////////////////////////////
 
-    ///////////////////////////////////////////////////
     int socketClient = 0;
     polaczenieJakoKlient(&socketClient, &port);
     
-    ///////////////////////////////////////////////////
     wyslanieStrukturyNaServer(&mySockaddrUN, socketClient, iloscPolaczen);
 
 
-    
     while(liczbaOdrzuconychPolaczen + liczbaZaakceptowanychPolaczen < iloscPolaczen)
     {
 
@@ -250,43 +247,34 @@ void polaczenieJakoKlient(int* socketTemp, int* port)
 {
     if ((*socketTemp = socket(AF_INET, SOCK_STREAM, 0)) == -1 )
     {
-        // sprawdzenie czy socket dziala
-        printf("Blad socket, polaczenieJakoKlient = multiwriter\n");
+        printf("Blad socket, polaczenieJakoKlient - multiwriter\n");
         exit(-1);
     }
 
-
-    // tworze strukture 
     struct sockaddr_in tempSockaddr;
 
     tempSockaddr.sin_family = AF_INET; 
     tempSockaddr.sin_port = htons( *port ); 
     tempSockaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-
     if (connect(*socketTemp, (struct sockaddr*)&tempSockaddr, sizeof(tempSockaddr)) == -1)
     {
-        // sprawdzic czy dziala
         printf("Blad connect, polaczenieJakoKlient - multiwriter\n");
         exit(-1);
     }
 
     nonBlock(*socketTemp);
-
     dodanie_do_epoll(*socketTemp, EPOLLIN | EPOLLET);
 }
 
 
 void dodanie_do_epoll(int fileDescriptor, int typDoEpoll)
 {
-    //printf("dodawanie do epoll AAAA\n");
-
     struct epoll_event structEvent;
 
     structEvent.data.fd = fileDescriptor;
     structEvent.events = typDoEpoll;
 
-   //if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, evTemp.data.fd, &structEvent) == -1 )
    if ( epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fileDescriptor, &structEvent) == -1 )
    {
        printf("Blad dodanie_do_epoll - serwer\n");
@@ -297,7 +285,6 @@ void dodanie_do_epoll(int fileDescriptor, int typDoEpoll)
 
 void tworzenie_serwer(struct sockaddr_un sockaddrStruct)
 {
-    //server_fd
     if ((server_fd = socket(AF_LOCAL, SOCK_STREAM, 0)) == -1 )
     {
         printf("Blad socket - tworzenie server multiwriter\n");
@@ -311,9 +298,7 @@ void tworzenie_serwer(struct sockaddr_un sockaddrStruct)
     }
 
     nonBlock(server_fd);
-
     dodanie_do_epoll(server_fd, EPOLLIN | EPOLLET);
-
 }
 
 
@@ -329,7 +314,6 @@ void nasluchiwanieServer(int fileDescriptor, int iloscPolaczen)
 
 void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal)
 {
-    printf("AKCEPTOWANIE POLACZENIA!!!!!!!!!!!!!\n");
 
     int tempFileDescriptor = 0;
 
@@ -339,22 +323,13 @@ void akceptowaniePolaczenia(int fileDescriptor, int** tablicaDeskryptorowLokal)
         exit(-1);
     }
 
-    //nonBlock(tempFileDescriptor);
-
     **tablicaDeskryptorowLokal = tempFileDescriptor;
-    printf("TABLICA DESKRYPTOROW: %d\n", **tablicaDeskryptorowLokal);
     (*tablicaDeskryptorowLokal) += 1;
     dodanie_do_epoll(tempFileDescriptor, EPOLLIN | EPOLLET);
 }
     
 void czytanieStruktury(int fileDescriptor)
 {
-      
-      // sprobowac wyslac 
-        // jesli tak to wyslac
-        // else
-            // poslac do autora
-            // z flaga w sun_family -1
 
     while(1)
     {
@@ -368,13 +343,11 @@ void czytanieStruktury(int fileDescriptor)
 
       if ( myStructUN.sun_family >= 65535)
       {
-        printf("Przyszla struktura ze statusem sun_family = -1\n");
         liczbaOdrzuconychPolaczen++;
       }
       
       else  
       {
-          printf("Przyszla strutkura AF_LOCAL - czytanieStruktury = multiwriter\n");
           liczbaZaakceptowanychPolaczen++;
       }
     }
@@ -390,7 +363,6 @@ void wyslanieStrukturyNaServer(struct sockaddr_un* sockaddrUN, int fileDescripto
            exit(-1);
        }
     }
-    printf("Wyslano %d polaczen\n", iloscPolaczen);
 }
 
 void utworzenieBudzikaINastawienie(float calkowityCzasPracy)
@@ -398,7 +370,6 @@ void utworzenieBudzikaINastawienie(float calkowityCzasPracy)
     struct sigevent sev;
     struct itimerspec its;
     timer_t timerid;
-
 
     sev.sigev_notify = SIGEV_SIGNAL;
     sev.sigev_signo = SIGUSR1;
@@ -410,22 +381,16 @@ void utworzenieBudzikaINastawienie(float calkowityCzasPracy)
         exit(EXIT_FAILURE);
     }
 
-
-    // zamiana z centy na nano
     double tempTime = calkowityCzasPracy * 10000000;
 
     its.it_value.tv_sec = (int) (tempTime / 1000000000);
     its.it_value.tv_nsec = (long long) tempTime % 1000000000;
     its.it_interval.tv_sec = 0;
     its.it_interval.tv_nsec = 0;
-    // its.it_value.tv_sec = 2;
-    //  its.it_value.tv_nsec = 999999999;
 
     if ( timer_settime(timerid, 0, &its, NULL) == -1 )
     {
         printf("Blad timer_settime, utworzenieBudzikaINastawienie\n");
-        printf("%d\n", errno);
-        // errno 22 - wychodzi po za zakres 
         exit(-1);
     }
 }
@@ -448,8 +413,6 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
     {
         bufforWynikowy[2] = (char)iloscMinut + '0';
     }
-    
-    //bufforWynikowy[2] = (char)iloscMinut + '0';
 
     else  
     {
@@ -457,8 +420,6 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
         bufforWynikowy[1] = (char)(iloscMinut / 10) + '0';
     }
     
-    //write(1, bufforWynikowy, 3);
-
     bufforWynikowy[3] = '*';
     bufforWynikowy[4] = ':';
 
@@ -473,12 +434,6 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
         bufforWynikowy[5] = (char)(iloscSekund / 10) + '0';
     }
 
-
-    // for(int i = 19; i > 16; i--)
-    // {
-    //     bufforWynikowy[i] = (char)(iloscNanosekund % (i*10)) + '0';
-    // }
-
     bufforWynikowy[7] = ',';
     bufforWynikowy[8] = (char)(iloscNanosekund   /100000000   % 10) + '0';
     bufforWynikowy[9] = (char)(iloscNanosekund   /10000000    % 10) + '0';
@@ -492,8 +447,6 @@ char* reprezentacjaTekstowaCzasu (struct timespec strukturaCzas)
     bufforWynikowy[17] = (char)(iloscNanosekund  /100         % 10) + '0';
     bufforWynikowy[18] = (char)(iloscNanosekund  /10          % 10) + '0';
     bufforWynikowy[19] = (char)(iloscNanosekund               % 10) + '0';
-
-//    write(1, bufforWynikowy, 20);
 
     return bufforWynikowy;
 }
@@ -523,11 +476,6 @@ void doWyslaniaPrzezLokal(int* tablicaDeskryptorowLokal, struct sockaddr_un sock
         losowyIndex = rand() % liczbaZaakceptowanychPolaczen;
     }
 
-    // wyslac
-    // 1) tekstowa reprezentacja czasu
-    // 2) adres gniazda, ktory byl wyslany przy rejestracji
-    // 3) liczbowa wartosc znacznika (struktura timespec)
-
     if (write(tablicaDeskryptorowLokal[losowyIndex], czasString, 21) < 21 )
     {
         printf("Blad write1 doWyslaniaPrzezLokal multiwriter\n");
@@ -552,35 +500,12 @@ void doWyslaniaPrzezLokal(int* tablicaDeskryptorowLokal, struct sockaddr_un sock
         exit(-1);
     }
 
-    // roznica czasu
     roznicaCzasu(czasStart, czasKoniec);
 }
 
 
 void roznicaCzasu(struct timespec czasStart, struct timespec czasKoniec)
 {
-    // czasStart.tv_sec += czasKoniec.tv_sec - czasStart.tv_sec + ((czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)/1000000000);
-    // long temp = (czasSuma.tv_nsec + czasKoniec.tv_nsec - czasStart.tv_nsec)%1000000000;
-
-    // if ( temp < 0)
-    //     czasSuma.tv_nsec = -temp;
-    // else 
-    // {
-    //     czasSuma.tv_nsec = temp;
-    // }
-
-    //     if( a->tv_nsec + b->tv_nsec >= (long)1e9 )
-    // {
-    //     wynik->tv_sec = a->tv_sec + b->tv_sec + 1;
-    //     wynik->tv_nsec= a->tv_nsec + b->tv_nsec - (long)1e9;
-    // }
-    // else
-    // {
-    //     wynik->tv_sec = a->tv_sec + b->tv_sec;
-    //     wynik->tv_nsec = a->tv_nsec + b->tv_nsec;
-    // }
-
-
     long long nanoSekundy;
     long long sekundy;
 
