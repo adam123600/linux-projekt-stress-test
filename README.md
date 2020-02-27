@@ -9,8 +9,7 @@ Projekt zaliczony na 75%
 UWAGI:
 + kompilacja: ok
 + uwagi:
-
-- sprawia dobre wrażenie
-- format logów niepoprawny
-- reaguje na zmiany ustawień tempa (sensownie)
+  - sprawia dobre wrażenie
+  - format logów niepoprawny
+  - reaguje na zmiany ustawień tempa (sensownie)
 
